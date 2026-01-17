@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BlazeCraft - AI Agent Command Center</title>
+  <meta name="description" content="RTS-style command center for monitoring Claude Code agents and workers." />
+  <meta name="theme-color" content="#0d0d0d" />
+
+  <!-- Open Graph -->
+  <meta property="og:title" content="BlazeCraft - AI Agent Command Center" />
+  <meta property="og:description" content="Real-time strategy interface for Claude Code agent visualization." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://blazecraft.app" />
+
+  <!-- Fonts: Inter for modern UI -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <link rel="stylesheet" href="styles/main.css" />
+</head>
+<body>
+  <div id="app" aria-label="BlazeCraft Command Center">
+
+    <!-- Top Resource Bar -->
+    <header id="topbar" class="panel" role="banner">
+      <div class="topbar-left">
+        <div class="brand">
+          <div class="brand-badge" aria-hidden="true">BC</div>
+          <div class="brand-title">
+            <div class="brand-name">BlazeCraft</div>
+            <div class="brand-sub">AI Agent Command Center</div>
+          </div>
+        </div>
+
+        <button id="idleAlert" class="idle-alert" type="button" aria-live="polite" hidden>
+          <span class="idle-alert-dot" aria-hidden="true"></span>
+          <span class="idle-alert-text">Idle</span>
+          <span id="idleAlertCount" class="idle-alert-count">0</span>
+        </button>
+      </div>
+
+      <div class="resources" role="group" aria-label="Resources">
+        <div class="res" title="Tasks Completed">
+          <span class="res-ico">&#x2714;</span>
+          <span id="resCompleted" class="res-num">0</span>
+        </div>
+        <div class="res" title="Files Modified">
+          <span class="res-ico">&#x1F4C4;</span>
+          <span id="resFiles" class="res-num">0</span>
+        </div>
+        <div class="res" title="Active Workers">
+          <span class="res-ico">&#x26A1;</span>
+          <span id="resWorkers" class="res-num">0</span>
+        </div>
+        <div class="res" title="Failed Tasks">
+          <span class="res-ico">&#x26A0;</span>
+          <span id="resFailed" class="res-num">0</span>
+        </div>
+        <div class="res" title="Session Duration">
+          <span class="res-ico">&#x1F551;</span>
+          <span id="resDuration" class="res-num">00:00</span>
+        </div>
+        <div class="res" title="Tokens Spent">
+          <span class="res-ico">&#x1F4B0;</span>
+          <span id="resTokens" class="res-num">0</span>
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <button id="toggleLog" class="btn" type="button" aria-pressed="false">Log</button>
+        <button id="toggleDemo" class="btn" type="button" aria-pressed="true" title="Toggle demo mode">Demo</button>
+      </div>
+    </header>
+
+    <!-- Center Map -->
+    <main id="mapWrap" class="panel" role="main">
+      <canvas id="mapCanvas" width="1280" height="720" aria-label="Workspace Map" tabindex="0"></canvas>
+      <div id="mapHud" class="hud" aria-hidden="true">
+        <div class="hud-row">
+          <span class="kbd">Drag</span> select
+          <span class="dot">&bull;</span>
+          <span class="kbd">RMB</span> assign
+          <span class="dot">&bull;</span>
+          <span class="kbd">Wheel</span> zoom
+          <span class="dot">&bull;</span>
+          <span class="kbd">MMB</span> pan
+        </div>
+      </div>
+    </main>
+
+    <!-- Event Log (Right) -->
+    <aside id="logPanel" class="panel" aria-label="Event Log">
+      <div class="panel-title">
+        <span>Event Log</span>
+        <span id="logStatus" class="tag">Live</span>
+      </div>
+      <div id="logFeed" class="log-feed" role="log" aria-live="polite"></div>
+    </aside>
+
+    <!-- Bottom Left: Portrait + Minimap -->
+    <section id="leftBottom" class="stack">
+      <div id="portraitPanel" class="panel">
+        <div class="panel-title">Agent</div>
+        <div class="portrait">
+          <div class="portrait-frame" aria-hidden="true">
+            <div id="portraitIcon" class="portrait-icon">?</div>
+          </div>
+          <div class="portrait-meta">
+            <div id="portraitName" class="portrait-name">No selection</div>
+            <div id="portraitTask" class="portrait-task">Select an agent on the map.</div>
+
+            <div class="meter" aria-label="Progress">
+              <div id="portraitMeter" class="meter-fill" style="width: 0%"></div>
+            </div>
+
+            <div class="kv">
+              <div class="kv-row"><span class="k">Status</span><span id="portraitStatus" class="v">-</span></div>
+              <div class="kv-row"><span class="k">Elapsed</span><span id="portraitElapsed" class="v">-</span></div>
+              <div class="kv-row"><span class="k">Tokens</span><span id="portraitTokens" class="v">-</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="minimapPanel" class="panel">
+        <div class="panel-title">Minimap</div>
+        <canvas id="minimapCanvas" width="280" height="180" aria-label="Minimap"></canvas>
+      </div>
+    </section>
+
+    <!-- Bottom Right: Command Card -->
+    <section id="commandPanel" class="panel" aria-label="Command Card">
+      <div class="panel-title">Command Card</div>
+      <div class="cmd-grid" role="group" aria-label="Commands">
+        <button class="cmd" data-cmd="stop" title="Stop (S)"><span class="cmd-ico">&#x23F9;</span><span class="cmd-label">Stop</span></button>
+        <button class="cmd" data-cmd="hold" title="Hold (H)"><span class="cmd-ico">&#x23F8;</span><span class="cmd-label">Hold</span></button>
+        <button class="cmd" data-cmd="resume" title="Resume (R)"><span class="cmd-ico">&#x25B6;</span><span class="cmd-label">Resume</span></button>
+        <button class="cmd" data-cmd="reassign" title="Reassign (A)"><span class="cmd-ico">&#x21C4;</span><span class="cmd-label">Assign</span></button>
+        <button class="cmd" data-cmd="inspect" title="Inspect (I)"><span class="cmd-ico">&#x1F50E;</span><span class="cmd-label">Inspect</span></button>
+        <button class="cmd" data-cmd="terminate" title="Terminate (X)"><span class="cmd-ico">&#x2716;</span><span class="cmd-label">Terminate</span></button>
+
+        <button class="cmd cmd-muted" disabled><span class="cmd-ico">&#x1F4CB;</span><span class="cmd-label">Logs</span></button>
+        <button class="cmd cmd-muted" disabled><span class="cmd-ico">&#x1F4C1;</span><span class="cmd-label">Files</span></button>
+        <button class="cmd cmd-muted" disabled><span class="cmd-ico">&#x1F4AC;</span><span class="cmd-label">Notes</span></button>
+
+        <button class="cmd cmd-muted" disabled><span class="cmd-ico">&#x1F3AF;</span><span class="cmd-label">Focus</span></button>
+        <button class="cmd cmd-muted" disabled><span class="cmd-ico">&#x1F6E1;</span><span class="cmd-label">Guard</span></button>
+        <button class="cmd cmd-muted" disabled><span class="cmd-ico">&#x1F4E1;</span><span class="cmd-label">Scan</span></button>
+      </div>
+
+      <div class="cmd-hints" aria-hidden="true">
+        Hotkeys: <span class="kbd">S</span> stop, <span class="kbd">H</span> hold, <span class="kbd">R</span> resume, <span class="kbd">A</span> assign, <span class="kbd">I</span> inspect, <span class="kbd">X</span> terminate
+      </div>
+    </section>
+
+    <!-- Bottom Center: Status panel -->
+    <section id="bottomCenter" class="panel" aria-label="Status">
+      <div class="panel-title">Status Report</div>
+      <div id="scoutReport" class="scout">
+        <div class="scout-line">All systems operational.</div>
+        <div class="scout-line muted">Demo mode is generating agent activity.</div>
+      </div>
+    </section>
+
+  </div>
+
+  <script type="module" src="scripts/main.js"></script>
+</body>
+</html>
