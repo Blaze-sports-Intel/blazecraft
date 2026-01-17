@@ -15,11 +15,6 @@ TIMEZONE = "America/Chicago"
 # binding = "BLAZECRAFT_SESSIONS"
 # id = "TBD"
 
-[env.staging]
-name = "blazecraft-staging"
-[env.staging.vars]
-ENVIRONMENT = "staging"
-
 [env.preview]
 name = "blazecraft-preview"
 [env.preview.vars]
