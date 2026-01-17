@@ -1,5 +1,6 @@
-name = "blaze-blazecraft"
+name = "blazecraft"
 compatibility_date = "2024-12-01"
+pages_build_output_dir = "."
 
 [vars]
 ENVIRONMENT = "production"
@@ -7,6 +8,7 @@ TIMEZONE = "America/Chicago"
 
 # Static site - no build step required
 # Cloudflare Pages handles deployment directly
+# Primary domain: blazecraft.app
 
 # Future: Add KV for session persistence
 # [[kv_namespaces]]
@@ -14,11 +16,11 @@ TIMEZONE = "America/Chicago"
 # id = "TBD"
 
 [env.staging]
-name = "blaze-blazecraft-staging"
+name = "blazecraft-staging"
 [env.staging.vars]
 ENVIRONMENT = "staging"
 
 [env.preview]
-name = "blaze-blazecraft-preview"
+name = "blazecraft-preview"
 [env.preview.vars]
 ENVIRONMENT = "preview"
