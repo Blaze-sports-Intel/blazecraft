@@ -2,6 +2,7 @@ import { GameState } from './game-state.js';
 import { Renderer } from './renderer.js';
 import { UIPanels } from './ui-panels.js';
 import { MockBridge } from './mock-data.js';
+import { RealBridge } from './real-bridge.js';
 import { CommandCenter } from './commands.js';
 import { clamp } from './map.js';
 
@@ -14,7 +15,13 @@ async function init() {
   const renderer = new Renderer(mapCanvas, minimapCanvas);
   await renderer.loadTextures();
 
-  const bridge = new MockBridge(state);
+  const bridges = {
+    mock: new MockBridge(state),
+    real: new RealBridge(state, resolveBridgeConfig()),
+  };
+
+  let bridgeMode = getInitialBridgeMode();
+  let bridge = bridges[bridgeMode];
   const commands = new CommandCenter(state, bridge);
   const ui = new UIPanels(state, renderer);
 
@@ -29,22 +36,14 @@ async function init() {
   });
 
   // controls: demo mode
-  let demoOn = true;
+  let demoOn = bridgeMode === 'mock';
   const toggleDemo = document.getElementById('toggleDemo');
+  toggleDemo.setAttribute('aria-pressed', String(demoOn));
   toggleDemo.addEventListener('click', async () => {
     demoOn = !demoOn;
     toggleDemo.setAttribute('aria-pressed', String(demoOn));
-    if (demoOn) {
-      await bridge.connect();
-      state.pushScoutLine('Demo mode resumed. Workers rallying.');
-    } else {
-      bridge.disconnect();
-      state.setSelected([]);
-      for (const wid of Array.from(state.workers.keys())) state.removeWorker(wid);
-      state.events = [];
-      state.pushScoutLine('Demo mode paused.');
-      state.notify();
-    }
+    bridgeMode = demoOn ? 'mock' : 'real';
+    await switchBridge(bridges, bridgeMode, commands, state);
   });
 
   // start demo
@@ -197,6 +196,63 @@ async function init() {
   renderer.camera.x = renderer.world.w / 2;
   renderer.camera.y = renderer.world.h / 2;
   clampCamera(renderer, mapCanvas);
+}
+
+/**
+ * @returns {'mock'|'real'}
+ */
+function getInitialBridgeMode() {
+  const params = new URLSearchParams(window.location.search);
+  const demoParam = params.get('demo');
+  const bridgeParam = params.get('bridge');
+  const envBridge = typeof window.BLAZECRAFT_BRIDGE === 'string' ? window.BLAZECRAFT_BRIDGE : '';
+  const envDemo = typeof window.BLAZECRAFT_DEMO === 'string' ? window.BLAZECRAFT_DEMO : '';
+
+  const demoFromParam = demoParam === '1' || demoParam === 'true';
+  const bridgeFromParam = bridgeParam === 'mock' || bridgeParam === 'real';
+  const bridgeFromEnv = envBridge === 'mock' || envBridge === 'real';
+  const demoFromEnv = envDemo === '1' || envDemo === 'true';
+
+  if (bridgeFromParam) return /** @type {'mock'|'real'} */ (bridgeParam);
+  if (bridgeFromEnv) return /** @type {'mock'|'real'} */ (envBridge);
+  if (demoFromParam || demoFromEnv) return 'mock';
+  return 'real';
+}
+
+function resolveBridgeConfig() {
+  const params = new URLSearchParams(window.location.search);
+  const streamOverride = params.get('stream');
+  const wsOverride = params.get('ws');
+  const commandOverride = params.get('command');
+
+  return {
+    streamUrl: typeof window.BLAZECRAFT_STREAM_URL === 'string' ? window.BLAZECRAFT_STREAM_URL : (streamOverride || undefined),
+    wsUrl: typeof window.BLAZECRAFT_WS_URL === 'string' ? window.BLAZECRAFT_WS_URL : (wsOverride || undefined),
+    commandUrl: typeof window.BLAZECRAFT_COMMAND_URL === 'string' ? window.BLAZECRAFT_COMMAND_URL : (commandOverride || undefined),
+    transport: params.get('transport') === 'ws' ? 'ws' : 'sse',
+  };
+}
+
+/**
+ * @param {{mock: MockBridge, real: RealBridge}} bridges
+ * @param {'mock'|'real'} mode
+ * @param {CommandCenter} commands
+ * @param {GameState} state
+ */
+async function switchBridge(bridges, mode, commands, state) {
+  const next = bridges[mode];
+  if (!next) return;
+  if (commands.bridge === next) return;
+  commands.bridge.disconnect?.();
+  commands.bridge = next;
+  await next.connect();
+  state.pushScoutLine(mode === 'mock' ? 'Demo stream enabled.' : 'Live stream enabled.');
+  state.pushEvent({
+    type: 'status',
+    workerId: 'bridge',
+    details: mode === 'mock' ? 'Switched to demo stream.' : 'Switched to live stream.',
+    timestamp: Date.now(),
+  });
 }
 
 /**
