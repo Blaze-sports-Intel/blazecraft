@@ -6,15 +6,6 @@ pages_build_output_dir = "."
 ENVIRONMENT = "production"
 TIMEZONE = "America/Chicago"
 
-# Static site - no build step required
-# Cloudflare Pages handles deployment directly
-# Primary domain: blazecraft.app
-
-# Future: Add KV for session persistence
-# [[kv_namespaces]]
-# binding = "BLAZECRAFT_SESSIONS"
-# id = "TBD"
-
 [env.preview]
 name = "blazecraft-preview"
 [env.preview.vars]
