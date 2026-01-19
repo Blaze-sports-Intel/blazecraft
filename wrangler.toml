@@ -1,13 +1,16 @@
 name = "blazecraft"
 compatibility_date = "2024-12-01"
-pages_build_output_dir = "."
+main = "src/worker.ts"
+
+[assets]
+directory = "."
+binding = "ASSETS"
 
 [vars]
 ENVIRONMENT = "production"
 TIMEZONE = "America/Chicago"
 
-# Static site - no build step required
-# Cloudflare Pages handles deployment directly
+# Static + Worker deployment
 # Primary domain: blazecraft.app
 
 # Future: Add KV for session persistence

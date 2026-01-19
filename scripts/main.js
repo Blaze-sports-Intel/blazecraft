@@ -1,7 +1,7 @@
 import { GameState } from './game-state.js';
 import { Renderer } from './renderer.js';
 import { UIPanels } from './ui-panels.js';
-import { MockBridge } from './mock-data.js';
+import { LiveBridge } from './live-bridge.js';
 import { CommandCenter } from './commands.js';
 import { clamp } from './map.js';
 
@@ -14,7 +14,13 @@ async function init() {
   const renderer = new Renderer(mapCanvas, minimapCanvas);
   await renderer.loadTextures();
 
-  const bridge = new MockBridge(state);
+  const params = new URLSearchParams(window.location.search);
+  const devMode = params.get('dev') === '1';
+  const useMock = devMode && params.get('mock') === '1';
+
+  const bridge = useMock
+    ? new (await import('./dev/mock-data.js')).MockBridge(state)
+    : new LiveBridge(state);
   const commands = new CommandCenter(state, bridge);
   const ui = new UIPanels(state, renderer);
 
@@ -28,26 +34,31 @@ async function init() {
     toggleLog.setAttribute('aria-pressed', String(!collapsed));
   });
 
-  // controls: demo mode
-  let demoOn = true;
+  // controls: demo mode (dev only)
   const toggleDemo = document.getElementById('toggleDemo');
-  toggleDemo.addEventListener('click', async () => {
-    demoOn = !demoOn;
-    toggleDemo.setAttribute('aria-pressed', String(demoOn));
-    if (demoOn) {
-      await bridge.connect();
-      state.pushScoutLine('Demo mode resumed. Workers rallying.');
-    } else {
-      bridge.disconnect();
-      state.setSelected([]);
-      for (const wid of Array.from(state.workers.keys())) state.removeWorker(wid);
-      state.events = [];
-      state.pushScoutLine('Demo mode paused.');
-      state.notify();
-    }
-  });
+  if (devMode && toggleDemo) {
+    let demoOn = true;
+    toggleDemo.addEventListener('click', async () => {
+      demoOn = !demoOn;
+      toggleDemo.setAttribute('aria-pressed', String(demoOn));
+      if (demoOn) {
+        await bridge.connect();
+        state.pushScoutLine('Demo mode resumed. Workers rallying.');
+      } else {
+        bridge.disconnect();
+        state.setSelected([]);
+        for (const wid of Array.from(state.workers.keys())) state.removeWorker(wid);
+        state.events = [];
+        state.pushScoutLine('Demo mode paused.');
+        state.notify();
+      }
+    });
+  } else if (toggleDemo) {
+    toggleDemo.setAttribute('hidden', 'true');
+    toggleDemo.setAttribute('aria-hidden', 'true');
+  }
 
-  // start demo
+  // start feed
   await bridge.connect();
 
   // map interactions
