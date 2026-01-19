@@ -2,6 +2,7 @@ import { GameState } from './game-state.js';
 import { Renderer } from './renderer.js';
 import { UIPanels } from './ui-panels.js';
 import { MockBridge } from './mock-data.js';
+import { LiveBridge } from './bridge.js';
 import { CommandCenter } from './commands.js';
 import { clamp } from './map.js';
 
@@ -14,9 +15,23 @@ async function init() {
   const renderer = new Renderer(mapCanvas, minimapCanvas);
   await renderer.loadTextures();
 
-  const bridge = new MockBridge(state);
+  const params = new URLSearchParams(window.location.search);
+  const demoParam = params.get('demo') === '1';
+  const devToggle = window.location.hostname === 'localhost' || window.location.hostname.endsWith('.local');
+  let demoOn = demoParam || devToggle;
+
+  let bridge = demoOn ? new MockBridge(state) : new LiveBridge(state);
   const commands = new CommandCenter(state, bridge);
   const ui = new UIPanels(state, renderer);
+
+  const swapBridge = async (nextBridge, nextDemoOn) => {
+    const prev = bridge;
+    bridge = nextBridge;
+    commands.bridge = bridge;
+    prev.disconnect?.();
+    await bridge.connect();
+    state.pushScoutLine(nextDemoOn ? 'Demo mode engaged.' : 'Live bridge connected.');
+  };
 
   // keep UI in sync
   state.subscribe(() => ui.render());
@@ -29,25 +44,16 @@ async function init() {
   });
 
   // controls: demo mode
-  let demoOn = true;
   const toggleDemo = document.getElementById('toggleDemo');
+  toggleDemo.setAttribute('aria-pressed', String(demoOn));
   toggleDemo.addEventListener('click', async () => {
     demoOn = !demoOn;
     toggleDemo.setAttribute('aria-pressed', String(demoOn));
-    if (demoOn) {
-      await bridge.connect();
-      state.pushScoutLine('Demo mode resumed. Workers rallying.');
-    } else {
-      bridge.disconnect();
-      state.setSelected([]);
-      for (const wid of Array.from(state.workers.keys())) state.removeWorker(wid);
-      state.events = [];
-      state.pushScoutLine('Demo mode paused.');
-      state.notify();
-    }
+    const next = demoOn ? new MockBridge(state) : new LiveBridge(state);
+    await swapBridge(next, demoOn);
   });
 
-  // start demo
+  // start bridge
   await bridge.connect();
 
   // map interactions
