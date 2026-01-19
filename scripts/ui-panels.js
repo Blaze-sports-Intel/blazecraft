@@ -116,9 +116,11 @@ export class UIPanels {
     }
 
     // scout report
-    this.$scoutReport.innerHTML = s.scout
-      .map((line, idx) => `<div class="scout-line${idx === 0 ? '' : ' muted'}">${escapeHtml(line)}</div>`)
-      .join('');
+    if (this.$scoutReport) {
+      this.$scoutReport.innerHTML = s.scout
+        .map((line, idx) => `<div class="scout-line${idx === 0 ? '' : ' muted'}">${escapeHtml(line)}</div>`)
+        .join('');
+    }
 
     // log
     const key = `${s.events.length}:${s.selected.size}:${s.workers.size}:${s.stats.completed}:${s.stats.failed}`;
