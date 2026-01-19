@@ -1,21 +1,37 @@
 name = "blazecraft"
 compatibility_date = "2024-12-01"
-pages_build_output_dir = "."
+main = "workers/api.ts"
+assets = { directory = ".", binding = "ASSETS" }
 
 [vars]
 ENVIRONMENT = "production"
 TIMEZONE = "America/Chicago"
+MLB_STATS_API_BASE = "https://statsapi.mlb.com/api/v1"
+CACHE_TTL_SECONDS = "60"
+HISTORICAL_TTL_SECONDS = "86400"
 
-# Static site - no build step required
-# Cloudflare Pages handles deployment directly
-# Primary domain: blazecraft.app
+[[kv_namespaces]]
+binding = "BLAZECRAFT_CACHE"
+id = "__BLAZECRAFT_CACHE_ID__"
+preview_id = "__BLAZECRAFT_CACHE_PREVIEW_ID__"
 
-# Future: Add KV for session persistence
-# [[kv_namespaces]]
-# binding = "BLAZECRAFT_SESSIONS"
-# id = "TBD"
+[[d1_databases]]
+binding = "HISTORICAL_DB"
+database_name = "blazecraft-historical"
+database_id = "__BLAZECRAFT_D1_ID__"
+preview_database_id = "__BLAZECRAFT_D1_PREVIEW_ID__"
+migrations_dir = "migrations"
+
+[[r2_buckets]]
+binding = "HISTORICAL_BUCKET"
+bucket_name = "blazecraft-historical"
+preview_bucket_name = "blazecraft-historical-preview"
 
 [env.preview]
 name = "blazecraft-preview"
 [env.preview.vars]
 ENVIRONMENT = "preview"
+TIMEZONE = "America/Chicago"
+MLB_STATS_API_BASE = "https://statsapi.mlb.com/api/v1"
+CACHE_TTL_SECONDS = "60"
+HISTORICAL_TTL_SECONDS = "3600"
