@@ -4,17 +4,37 @@ import { UIPanels } from './ui-panels.js';
 import { MockBridge } from './mock-data.js';
 import { CommandCenter } from './commands.js';
 import { clamp } from './map.js';
+import type { AgentBridge } from './bridge.js';
+import type { Worker } from './game-state.js';
+
+function getCanvas(id: string): HTMLCanvasElement {
+  const el = document.getElementById(id);
+  if (!el) throw new Error(`Missing canvas: ${id}`);
+  if (!(el instanceof HTMLCanvasElement)) {
+    throw new Error(`Element ${id} is not a canvas.`);
+  }
+  return el;
+}
+
+function getButton(id: string): HTMLButtonElement {
+  const el = document.getElementById(id);
+  if (!el) throw new Error(`Missing button: ${id}`);
+  if (!(el instanceof HTMLButtonElement)) {
+    throw new Error(`Element ${id} is not a button.`);
+  }
+  return el;
+}
 
 async function init() {
   const state = new GameState();
 
-  const mapCanvas = /** @type {HTMLCanvasElement} */ (document.getElementById('mapCanvas'));
-  const minimapCanvas = /** @type {HTMLCanvasElement} */ (document.getElementById('minimapCanvas'));
+  const mapCanvas = getCanvas('mapCanvas');
+  const minimapCanvas = getCanvas('minimapCanvas');
 
   const renderer = new Renderer(mapCanvas, minimapCanvas);
   await renderer.loadTextures();
 
-  const bridge = new MockBridge(state);
+  const bridge: AgentBridge = new MockBridge(state);
   const commands = new CommandCenter(state, bridge);
   const ui = new UIPanels(state, renderer);
 
@@ -22,7 +42,7 @@ async function init() {
   state.subscribe(() => ui.render());
 
   // controls: log panel
-  const toggleLog = document.getElementById('toggleLog');
+  const toggleLog = getButton('toggleLog');
   toggleLog.addEventListener('click', () => {
     const collapsed = document.body.classList.toggle('log-collapsed');
     toggleLog.setAttribute('aria-pressed', String(!collapsed));
@@ -30,7 +50,7 @@ async function init() {
 
   // controls: demo mode
   let demoOn = true;
-  const toggleDemo = document.getElementById('toggleDemo');
+  const toggleDemo = getButton('toggleDemo');
   toggleDemo.addEventListener('click', async () => {
     demoOn = !demoOn;
     toggleDemo.setAttribute('aria-pressed', String(demoOn));
@@ -122,7 +142,7 @@ async function init() {
       const x1 = Math.max(r.x0, r.x1);
       const y1 = Math.max(r.y0, r.y1);
 
-      const ids = [];
+      const ids: string[] = [];
       for (const w of state.workers.values()) {
         if (w.position.x >= x0 && w.position.x <= x1 && w.position.y >= y0 && w.position.y <= y1) {
           ids.push(w.id);
@@ -167,16 +187,27 @@ async function init() {
   });
 
   // command card buttons
-  for (const b of Array.from(document.querySelectorAll('button.cmd[data-cmd]'))) {
+  for (const b of Array.from(document.querySelectorAll<HTMLButtonElement>('button.cmd[data-cmd]'))) {
     b.addEventListener('click', () => {
-      const cmd = /** @type {any} */ (b.getAttribute('data-cmd'));
+      const cmd = b.getAttribute('data-cmd');
+      if (!cmd) return;
+      if (
+        cmd !== 'stop' &&
+        cmd !== 'hold' &&
+        cmd !== 'resume' &&
+        cmd !== 'reassign' &&
+        cmd !== 'inspect' &&
+        cmd !== 'terminate'
+      ) {
+        return;
+      }
       commands.exec(cmd);
     });
   }
 
   // hotkeys
   window.addEventListener('keydown', (e) => {
-    if (e.target && /** @type {HTMLElement} */ (e.target).tagName === 'INPUT') return;
+    if (e.target && (e.target as HTMLElement).tagName === 'INPUT') return;
     const key = e.key.toLowerCase();
     if (key === 's') commands.exec('stop');
     if (key === 'h') commands.exec('hold');
@@ -200,12 +231,12 @@ async function init() {
 }
 
 /**
- * @param {import('./game-state.js').GameState} state
+ * @param {GameState} state
  * @param {number} wx
  * @param {number} wy
  */
-function hitTestWorker(state, wx, wy) {
-  let best = null;
+function hitTestWorker(state: GameState, wx: number, wy: number): Worker | null {
+  let best: Worker | null = null;
   let bestD = 999999;
   for (const w of state.workers.values()) {
     const dx = w.position.x - wx;
@@ -220,10 +251,10 @@ function hitTestWorker(state, wx, wy) {
 }
 
 /**
- * @param {import('./renderer.js').Renderer} renderer
+ * @param {Renderer} renderer
  * @param {HTMLCanvasElement} mapCanvas
  */
-function clampCamera(renderer, mapCanvas) {
+function clampCamera(renderer: Renderer, mapCanvas: HTMLCanvasElement) {
   const { w, h } = renderer.world;
   const mapRect = mapCanvas.getBoundingClientRect();
   const viewW = mapRect.width / renderer.camera.zoom;

@@ -1,4 +1,6 @@
 import { formatDuration } from './game-state.js';
+import type { StateStore } from './game-state.js';
+import type { RendererView } from './renderer.js';
 
 const ICONS = {
   spawn: '⚡',
@@ -10,14 +12,37 @@ const ICONS = {
   status: '•',
 };
 
-function el(id) { return document.getElementById(id); }
+function el<T extends HTMLElement>(id: string): T {
+  const node = document.getElementById(id);
+  if (!node) throw new Error(`Missing element: ${id}`);
+  return node as T;
+}
 
 export class UIPanels {
-  /**
-   * @param {import('./game-state.js').GameState} state
-   * @param {import('./renderer.js').Renderer} renderer
-   */
-  constructor(state, renderer) {
+  state: StateStore;
+  renderer: RendererView;
+  $resCompleted: HTMLElement;
+  $resFiles: HTMLElement;
+  $resWorkers: HTMLElement;
+  $resFailed: HTMLElement;
+  $resDuration: HTMLElement;
+  $resTokens: HTMLElement;
+  $idleAlert: HTMLElement;
+  $idleAlertCount: HTMLElement;
+  $portraitIcon: HTMLElement;
+  $portraitName: HTMLElement;
+  $portraitTask: HTMLElement;
+  $portraitMeter: HTMLElement;
+  $portraitStatus: HTMLElement;
+  $portraitElapsed: HTMLElement;
+  $portraitTokens: HTMLElement;
+  $logFeed: HTMLElement;
+  $logStatus: HTMLElement;
+  $scoutReport: HTMLElement;
+  _idleIndex: number;
+  _lastLogRenderKey: string;
+
+  constructor(state: StateStore, renderer: RendererView) {
     this.state = state;
     this.renderer = renderer;
 
@@ -152,7 +177,7 @@ export class UIPanels {
     }).join('');
 
     // click handlers
-    this.$logFeed.querySelectorAll('button.log-item').forEach((b) => {
+    this.$logFeed.querySelectorAll<HTMLButtonElement>('button.log-item').forEach((b) => {
       b.addEventListener('click', () => {
         const wid = b.getAttribute('data-worker');
         if (!wid) return;
@@ -166,7 +191,7 @@ export class UIPanels {
   }
 }
 
-function escapeHtml(str) {
+function escapeHtml(str: string) {
   return String(str)
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')

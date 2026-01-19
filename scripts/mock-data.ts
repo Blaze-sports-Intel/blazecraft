@@ -1,9 +1,7 @@
-import { REGIONS, randomPointIn, dist, clamp } from './map.js';
-
-/**
- * Mock AgentBridge that simulates Claude subagents.
- * @typedef {import('./game-state.js').GameState} GameState
- */
+import { REGIONS, randomPointIn, clamp } from './map.js';
+import type { GameState, Worker } from './game-state.js';
+import type { MapRegion } from './map.js';
+import type { AgentBridge } from './bridge.js';
 
 const TASK_SNIPPETS = [
   'Refactor component boundary',
@@ -18,7 +16,9 @@ const TASK_SNIPPETS = [
   'Extract state store and event bus',
 ];
 
-function rnd(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+function rnd<T>(arr: T[]): T {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
 
 function id() {
   return Math.random().toString(16).slice(2, 10);
@@ -26,7 +26,7 @@ function id() {
 
 function now() { return Date.now(); }
 
-function pickRegion() {
+function pickRegion(): MapRegion {
   // bias to goldmine + lumber
   const weighted = [];
   for (const r of REGIONS) {
@@ -36,30 +36,32 @@ function pickRegion() {
   return rnd(weighted);
 }
 
-/** @param {number} n */
-function formatInt(n) {
+function formatInt(n: number) {
   return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
 }
 
-/**
- * @param {GameState} state
- */
-export class MockBridge {
-  constructor(state) {
+type MotionState = { vx: number; vy: number; goal: { x: number; y: number }; speed: number };
+
+export class MockBridge implements AgentBridge {
+  state: GameState;
+  running: boolean;
+  timers: number[];
+  motion: Map<string, MotionState>;
+
+  constructor(state: GameState) {
     this.state = state;
     this.running = false;
     this.timers = [];
 
-    /** @type {Map<string, {vx:number,vy:number,goal:{x:number,y:number},speed:number}>} */
     this.motion = new Map();
   }
 
   /**
    * Manual assignment hook used by the command card (right-click a region).
    * @param {string[]} workerIds
-   * @param {import('./map.js').MapRegion} region
+   * @param {MapRegion} region
    */
-  manualAssign(workerIds, region) {
+  manualAssign(workerIds: string[], region: MapRegion) {
     for (const wid of workerIds) {
       const w = this.state.workers.get(wid);
       if (!w) continue;
@@ -85,14 +87,14 @@ export class MockBridge {
     this.spawn();
     this.spawn();
 
-    this.timers.push(setInterval(() => this.maybeSpawn(), 1600));
-    this.timers.push(setInterval(() => this.step(), 50));
-    this.timers.push(setInterval(() => this.heartbeat(), 1000));
+    this.timers.push(window.setInterval(() => this.maybeSpawn(), 1600));
+    this.timers.push(window.setInterval(() => this.step(), 50));
+    this.timers.push(window.setInterval(() => this.heartbeat(), 1000));
   }
 
   disconnect() {
     this.running = false;
-    for (const t of this.timers) clearInterval(t);
+    for (const t of this.timers) window.clearInterval(t);
     this.timers = [];
   }
 
@@ -109,7 +111,7 @@ export class MockBridge {
     const target = pickRegion();
 
     const wid = `w-${id()}`;
-    const w = {
+    const w: Worker = {
       id: wid,
       name: `Subagent-${Math.floor(1 + Math.random() * 99)}`,
       status: 'moving',
@@ -235,7 +237,7 @@ export class MockBridge {
           this.state.pushEvent({ type: 'task_complete', workerId: w.id, details: `Completed: ${w.currentTask}` });
 
           // despawn soon
-          setTimeout(() => {
+          window.setTimeout(() => {
             if (!this.running) return;
             const still = this.state.workers.get(w.id);
             if (!still) return;
@@ -243,7 +245,7 @@ export class MockBridge {
             still.updatedAt = now();
             this.state.upsertWorker({ ...still });
             this.state.pushEvent({ type: 'terminate', workerId: still.id, details: `${still.name} dismissed.` });
-            setTimeout(() => this.state.removeWorker(still.id), 900);
+            window.setTimeout(() => this.state.removeWorker(still.id), 900);
           }, 1400);
         }
 

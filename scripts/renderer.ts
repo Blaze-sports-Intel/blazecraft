@@ -1,18 +1,53 @@
 import { REGIONS, clamp, regionAt } from './map.js';
+import type { GameState, Worker } from './game-state.js';
+import type { MapRegion } from './map.js';
 
 /**
  * Canvas renderer for the main map + minimap.
  */
-export class Renderer {
-  /**
-   * @param {HTMLCanvasElement} mapCanvas
-   * @param {HTMLCanvasElement} minimapCanvas
-   */
-  constructor(mapCanvas, minimapCanvas) {
+export type SelectionBox = { active: boolean; x0: number; y0: number; x1: number; y1: number };
+export type Ping = { x: number; y: number; kind: 'spawn' | 'error'; t: number };
+export type CameraState = { x: number; y: number; zoom: number };
+export type WorldSize = { w: number; h: number };
+
+export interface RendererView {
+  camera: CameraState;
+  world: WorldSize;
+  selection: SelectionBox;
+  screenToWorld(clientX: number, clientY: number): { x: number; y: number };
+  worldToScreen(wx: number, wy: number): { x: number; y: number };
+  setSelection(active: boolean, x0: number, y0: number, x1: number, y1: number): void;
+  addPing(x: number, y: number, kind: Ping['kind']): void;
+  render(state: GameState): void;
+  minimapToWorld(clientX: number, clientY: number): { x: number; y: number };
+  regionAt(wx: number, wy: number): MapRegion | null;
+}
+
+export class Renderer implements RendererView {
+  mapCanvas: HTMLCanvasElement;
+  minimapCanvas: HTMLCanvasElement;
+  ctx: CanvasRenderingContext2D;
+  mctx: CanvasRenderingContext2D;
+  dpr: number;
+  camera: CameraState;
+  selection: SelectionBox;
+  texPar: HTMLImageElement | null;
+  texStone: HTMLImageElement | null;
+  lastEventTs: number;
+  pings: Ping[];
+  regionActivity: Map<string, number>;
+  world: WorldSize;
+
+  constructor(mapCanvas: HTMLCanvasElement, minimapCanvas: HTMLCanvasElement) {
     this.mapCanvas = mapCanvas;
     this.minimapCanvas = minimapCanvas;
-    this.ctx = mapCanvas.getContext('2d', { alpha: false });
-    this.mctx = minimapCanvas.getContext('2d', { alpha: false });
+    const ctx = mapCanvas.getContext('2d', { alpha: false });
+    const mctx = minimapCanvas.getContext('2d', { alpha: false });
+    if (!ctx || !mctx) {
+      throw new Error('Canvas 2D context unavailable.');
+    }
+    this.ctx = ctx;
+    this.mctx = mctx;
 
     this.dpr = Math.max(1, window.devicePixelRatio || 1);
 
@@ -30,16 +65,12 @@ export class Renderer {
       y1: 0,
     };
 
-    /** @type {HTMLImageElement|null} */
     this.texPar = null;
-    /** @type {HTMLImageElement|null} */
     this.texStone = null;
 
     this.lastEventTs = 0;
-    /** @type {{x:number,y:number,kind:'spawn'|'error',t:number}[]} */
     this.pings = [];
 
-    /** @type {Map<string, number>} */
     this.regionActivity = new Map();
 
     this.world = { w: 1280, h: 720 };
@@ -50,7 +81,7 @@ export class Renderer {
   }
 
   async loadTextures() {
-    const load = (src) => new Promise((resolve, reject) => {
+    const load = (src: string) => new Promise<HTMLImageElement>((resolve, reject) => {
       const img = new Image();
       img.onload = () => resolve(img);
       img.onerror = reject;
@@ -90,11 +121,7 @@ export class Renderer {
     this.mctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
   }
 
-  /**
-   * @param {number} clientX
-   * @param {number} clientY
-   */
-  screenToWorld(clientX, clientY) {
+  screenToWorld(clientX: number, clientY: number) {
     const rect = this.mapCanvas.getBoundingClientRect();
     const sx = clientX - rect.left;
     const sy = clientY - rect.top;
@@ -108,14 +135,14 @@ export class Renderer {
     return { x: wx, y: wy };
   }
 
-  worldToScreen(wx, wy) {
+  worldToScreen(wx: number, wy: number) {
     const rect = this.mapCanvas.getBoundingClientRect();
     const sx = (wx - this.camera.x) * this.camera.zoom + rect.width / 2;
     const sy = (wy - this.camera.y) * this.camera.zoom + rect.height / 2;
     return { x: sx, y: sy };
   }
 
-  setSelection(active, x0, y0, x1, y1) {
+  setSelection(active: boolean, x0: number, y0: number, x1: number, y1: number) {
     this.selection.active = active;
     this.selection.x0 = x0;
     this.selection.y0 = y0;
@@ -123,15 +150,12 @@ export class Renderer {
     this.selection.y1 = y1;
   }
 
-  addPing(x, y, kind) {
+  addPing(x: number, y: number, kind: Ping['kind']) {
     this.pings.push({ x, y, kind, t: performance.now() });
     if (this.pings.length > 32) this.pings.shift();
   }
 
-  /**
-   * @param {import('./game-state.js').GameState} state
-   */
-  render(state) {
+  render(state: GameState) {
     const now = performance.now();
 
     // activity (fog)
@@ -201,7 +225,7 @@ export class Renderer {
     this.drawMinimap(state);
   }
 
-  drawBackground(w, h) {
+  drawBackground(w: number, h: number) {
     const ctx = this.ctx;
 
     // base
@@ -228,16 +252,25 @@ export class Renderer {
     ctx.fillRect(0, 0, w, h);
   }
 
-  drawRegion(region, now) {
+  drawRegion(region: MapRegion, now: number) {
     const ctx = this.ctx;
     const b = region.bounds;
 
-    const palette = {
+    const paletteByType: Record<MapRegion['type'], { fill: string; edge: string }> = {
       townhall: { fill: 'rgba(40,35,28,0.75)', edge: 'rgba(201,162,39,0.9)' },
       goldmine: { fill: 'rgba(55,47,30,0.72)', edge: 'rgba(201,162,39,0.85)' },
       lumber: { fill: 'rgba(35,48,34,0.62)', edge: 'rgba(212,160,23,0.75)' },
       ground: { fill: 'rgba(36,35,33,0.55)', edge: 'rgba(139,115,32,0.65)' },
-    }[region.type];
+      barracks: { fill: 'rgba(36,35,33,0.62)', edge: 'rgba(139,115,32,0.75)' },
+      library: { fill: 'rgba(55,47,30,0.78)', edge: 'rgba(201,162,39,0.9)' },
+      workshop: { fill: 'rgba(35,48,34,0.7)', edge: 'rgba(212,160,23,0.8)' },
+      market: { fill: 'rgba(55,47,30,0.8)', edge: 'rgba(201,162,39,0.9)' },
+      farm: { fill: 'rgba(36,35,33,0.6)', edge: 'rgba(139,115,32,0.75)' },
+      blacksmith: { fill: 'rgba(35,48,34,0.7)', edge: 'rgba(212,160,23,0.8)' },
+      tower: { fill: 'rgba(40,35,28,0.82)', edge: 'rgba(201,162,39,0.92)' },
+      stables: { fill: 'rgba(40,35,28,0.78)', edge: 'rgba(201,162,39,0.9)' },
+    };
+    const palette = paletteByType[region.type];
 
     // shadow
     ctx.save();
@@ -294,7 +327,7 @@ export class Renderer {
     }
   }
 
-  drawWorker(worker, selected, now) {
+  drawWorker(worker: Worker, selected: boolean, now: number) {
     const ctx = this.ctx;
     const x = worker.position.x;
     const y = worker.position.y;
@@ -388,7 +421,7 @@ export class Renderer {
     ctx.restore();
   }
 
-  drawPing(p, now) {
+  drawPing(p: Ping, now: number) {
     const age = (now - p.t) / 1000;
     if (age > 1.4) return;
     const ctx = this.ctx;
@@ -403,7 +436,7 @@ export class Renderer {
     ctx.restore();
   }
 
-  drawMinimap(state) {
+  drawMinimap(state: GameState) {
     const ctx = this.mctx;
     const rect = this.minimapCanvas.getBoundingClientRect();
     const w = rect.width;
@@ -470,11 +503,7 @@ export class Renderer {
     ctx.strokeRect(vx, vy, viewW * sx, viewH * sy);
   }
 
-  /**
-   * @param {number} clientX
-   * @param {number} clientY
-   */
-  minimapToWorld(clientX, clientY) {
+  minimapToWorld(clientX: number, clientY: number) {
     const rect = this.minimapCanvas.getBoundingClientRect();
     const sx = (clientX - rect.left) / rect.width;
     const sy = (clientY - rect.top) / rect.height;
@@ -490,7 +519,7 @@ export class Renderer {
    * @param {number} wx
    * @param {number} wy
    */
-  regionAt(wx, wy) {
+  regionAt(wx: number, wy: number) {
     return regionAt(wx, wy);
   }
 }

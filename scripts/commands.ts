@@ -1,22 +1,19 @@
-/**
- * @typedef {import('./game-state.js').GameState} GameState
- */
+import type { GameState } from './game-state.js';
+import type { CommandBridge } from './bridge.js';
+import type { MapRegion } from './map.js';
 
 export class CommandCenter {
-  /**
-   * @param {GameState} state
-   * @param {{manualAssign?: (workerIds: string[], region: any) => void}=} bridge
-   */
-  constructor(state, bridge) {
+  state: GameState;
+  bridge: CommandBridge;
+  assignMode: boolean;
+
+  constructor(state: GameState, bridge?: CommandBridge) {
     this.state = state;
     this.bridge = bridge || {};
     this.assignMode = false;
   }
 
-  /**
-   * @param {'stop'|'hold'|'resume'|'reassign'|'inspect'|'terminate'} cmd
-   */
-  exec(cmd) {
+  exec(cmd: 'stop' | 'hold' | 'resume' | 'reassign' | 'inspect' | 'terminate') {
     const sel = this.state.getSelectedWorkers();
     if (!sel.length) return;
 
@@ -74,9 +71,9 @@ export class CommandCenter {
   }
 
   /**
-   * @param {import('./map.js').MapRegion} region
+   * @param {MapRegion} region
    */
-  assignSelectedTo(region) {
+  assignSelectedTo(region: MapRegion) {
     const sel = this.state.getSelectedWorkers();
     if (!sel.length) return;
 
