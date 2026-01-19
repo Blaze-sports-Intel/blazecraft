@@ -1,6 +1,8 @@
 import { formatDuration } from './game-state.js';
+import type { GameState, EventType } from './game-state.js';
+import type { Renderer } from './renderer.js';
 
-const ICONS = {
+const ICONS: Record<EventType, string> = {
   spawn: '⚡',
   task_start: '⛏',
   task_complete: '✅',
@@ -10,14 +12,35 @@ const ICONS = {
   status: '•',
 };
 
-function el(id) { return document.getElementById(id); }
+function el<T extends HTMLElement>(id: string) {
+  return document.getElementById(id) as T;
+}
 
 export class UIPanels {
-  /**
-   * @param {import('./game-state.js').GameState} state
-   * @param {import('./renderer.js').Renderer} renderer
-   */
-  constructor(state, renderer) {
+  state: GameState;
+  renderer: Renderer;
+  $resCompleted: HTMLElement;
+  $resFiles: HTMLElement;
+  $resWorkers: HTMLElement;
+  $resFailed: HTMLElement;
+  $resDuration: HTMLElement;
+  $resTokens: HTMLElement;
+  $idleAlert: HTMLButtonElement;
+  $idleAlertCount: HTMLElement;
+  $portraitIcon: HTMLElement;
+  $portraitName: HTMLElement;
+  $portraitTask: HTMLElement;
+  $portraitMeter: HTMLElement;
+  $portraitStatus: HTMLElement;
+  $portraitElapsed: HTMLElement;
+  $portraitTokens: HTMLElement;
+  $logFeed: HTMLElement;
+  $logStatus: HTMLElement;
+  $scoutReport: HTMLElement;
+  _idleIndex: number;
+  _lastLogRenderKey: string;
+
+  constructor(state: GameState, renderer: Renderer) {
     this.state = state;
     this.renderer = renderer;
 
@@ -55,6 +78,7 @@ export class UIPanels {
     if (!list.length) return;
     this._idleIndex = (this._idleIndex + 1) % list.length;
     const w = list[this._idleIndex];
+    if (!w) return;
     this.state.setSelected([w.id]);
     this.renderer.camera.x = w.position.x;
     this.renderer.camera.y = w.position.y;
@@ -76,7 +100,7 @@ export class UIPanels {
     if (idleOrBlocked.length) {
       this.$idleAlert.hidden = false;
       this.$idleAlertCount.textContent = String(idleOrBlocked.length);
-      const hasBlocked = idleOrBlocked.some(w => w.status === 'blocked');
+      const hasBlocked = idleOrBlocked.some((w) => w.status === 'blocked');
       this.$idleAlert.classList.toggle('has-blocked', hasBlocked);
     } else {
       this.$idleAlert.hidden = true;
@@ -86,6 +110,9 @@ export class UIPanels {
     const selected = s.getSelectedWorkers();
     if (selected.length === 1) {
       const w = selected[0];
+      if (!w) {
+        return;
+      }
       this.$portraitIcon.textContent = w.name.slice(0, 1).toUpperCase();
       this.$portraitName.textContent = w.name;
       this.$portraitTask.textContent = w.currentTask || 'No current task.';
@@ -135,9 +162,9 @@ export class UIPanels {
 
     this.$logStatus.textContent = s.workers.size ? 'Live' : 'Idle';
 
-    this.$logFeed.innerHTML = items.map(evt => {
+    this.$logFeed.innerHTML = items.map((evt) => {
       const icon = ICONS[evt.type] || '•';
-      const t = new Date(evt.timestamp);
+      const t = new Date(evt.timestamp as number);
       const hh = String(t.getHours()).padStart(2,'0');
       const mm = String(t.getMinutes()).padStart(2,'0');
       const ss = String(t.getSeconds()).padStart(2,'0');
@@ -166,11 +193,11 @@ export class UIPanels {
   }
 }
 
-function escapeHtml(str) {
+function escapeHtml(str: string) {
   return String(str)
-    .replaceAll('&', '&amp;')
-    .replaceAll('<', '&lt;')
-    .replaceAll('>', '&gt;')
-    .replaceAll('"', '&quot;')
-    .replaceAll("'", '&#039;');
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\"/g, '&quot;')
+    .replace(/'/g, '&#039;');
 }

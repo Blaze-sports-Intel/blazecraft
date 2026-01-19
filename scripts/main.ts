@@ -1,15 +1,15 @@
-import { GameState } from './game-state.js';
+import { GameState, type Worker } from './game-state.js';
 import { Renderer } from './renderer.js';
 import { UIPanels } from './ui-panels.js';
 import { MockBridge } from './mock-data.js';
-import { CommandCenter } from './commands.js';
+import { CommandCenter, type CommandType } from './commands.js';
 import { clamp } from './map.js';
 
 async function init() {
   const state = new GameState();
 
-  const mapCanvas = /** @type {HTMLCanvasElement} */ (document.getElementById('mapCanvas'));
-  const minimapCanvas = /** @type {HTMLCanvasElement} */ (document.getElementById('minimapCanvas'));
+  const mapCanvas = document.getElementById('mapCanvas') as HTMLCanvasElement;
+  const minimapCanvas = document.getElementById('minimapCanvas') as HTMLCanvasElement;
 
   const renderer = new Renderer(mapCanvas, minimapCanvas);
   await renderer.loadTextures();
@@ -22,7 +22,7 @@ async function init() {
   state.subscribe(() => ui.render());
 
   // controls: log panel
-  const toggleLog = document.getElementById('toggleLog');
+  const toggleLog = document.getElementById('toggleLog') as HTMLButtonElement;
   toggleLog.addEventListener('click', () => {
     const collapsed = document.body.classList.toggle('log-collapsed');
     toggleLog.setAttribute('aria-pressed', String(!collapsed));
@@ -30,7 +30,7 @@ async function init() {
 
   // controls: demo mode
   let demoOn = true;
-  const toggleDemo = document.getElementById('toggleDemo');
+  const toggleDemo = document.getElementById('toggleDemo') as HTMLButtonElement;
   toggleDemo.addEventListener('click', async () => {
     demoOn = !demoOn;
     toggleDemo.setAttribute('aria-pressed', String(demoOn));
@@ -122,7 +122,7 @@ async function init() {
       const x1 = Math.max(r.x0, r.x1);
       const y1 = Math.max(r.y0, r.y1);
 
-      const ids = [];
+      const ids: string[] = [];
       for (const w of state.workers.values()) {
         if (w.position.x >= x0 && w.position.x <= x1 && w.position.y >= y0 && w.position.y <= y1) {
           ids.push(w.id);
@@ -169,14 +169,15 @@ async function init() {
   // command card buttons
   for (const b of Array.from(document.querySelectorAll('button.cmd[data-cmd]'))) {
     b.addEventListener('click', () => {
-      const cmd = /** @type {any} */ (b.getAttribute('data-cmd'));
+      const cmd = b.getAttribute('data-cmd') as CommandType | null;
+      if (!cmd) return;
       commands.exec(cmd);
     });
   }
 
   // hotkeys
   window.addEventListener('keydown', (e) => {
-    if (e.target && /** @type {HTMLElement} */ (e.target).tagName === 'INPUT') return;
+    if (e.target && (e.target as HTMLElement).tagName === 'INPUT') return;
     const key = e.key.toLowerCase();
     if (key === 's') commands.exec('stop');
     if (key === 'h') commands.exec('hold');
@@ -199,13 +200,8 @@ async function init() {
   clampCamera(renderer, mapCanvas);
 }
 
-/**
- * @param {import('./game-state.js').GameState} state
- * @param {number} wx
- * @param {number} wy
- */
-function hitTestWorker(state, wx, wy) {
-  let best = null;
+function hitTestWorker(state: GameState, wx: number, wy: number) {
+  let best: Worker | null = null;
   let bestD = 999999;
   for (const w of state.workers.values()) {
     const dx = w.position.x - wx;
@@ -219,11 +215,7 @@ function hitTestWorker(state, wx, wy) {
   return best;
 }
 
-/**
- * @param {import('./renderer.js').Renderer} renderer
- * @param {HTMLCanvasElement} mapCanvas
- */
-function clampCamera(renderer, mapCanvas) {
+function clampCamera(renderer: Renderer, mapCanvas: HTMLCanvasElement) {
   const { w, h } = renderer.world;
   const mapRect = mapCanvas.getBoundingClientRect();
   const viewW = mapRect.width / renderer.camera.zoom;
@@ -233,4 +225,4 @@ function clampCamera(renderer, mapCanvas) {
   renderer.camera.y = clamp(renderer.camera.y, viewH / 2, h - viewH / 2);
 }
 
-init();
+void init();
