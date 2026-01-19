@@ -444,6 +444,7 @@ html, body {
 
 #portraitPanel { flex: 1; min-height: 0; }
 #minimapPanel { height: 175px; }
+#scoutPanel { height: 140px; }
 
 .portrait {
   display: grid;
@@ -535,6 +536,25 @@ html, body {
   height: calc(100% - 38px);
   display: block;
   margin: 0 0 10px 0;
+}
+
+.scout-report {
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  height: calc(100% - 38px);
+  overflow: auto;
+  font-size: 12px;
+  line-height: 1.3;
+}
+
+.scout-line {
+  color: rgba(244,244,247,0.92);
+}
+
+.scout-line.muted {
+  color: rgba(244,244,247,0.65);
 }
 
 /* Command card */
