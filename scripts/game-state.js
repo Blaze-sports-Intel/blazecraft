@@ -21,7 +21,7 @@ export class GameState {
     /** @type {string[]} */
     this.scout = [
       'No threats detected.',
-      'Demo mode is generating worker activity.',
+      'Live feed initializing.',
     ];
 
     this.stats = {

@@ -1,4 +1,4 @@
-import { REGIONS, randomPointIn, dist, clamp } from './map.js';
+import { REGIONS, randomPointIn, dist, clamp } from '../map.js';
 
 /**
  * Mock AgentBridge that simulates Claude subagents.
