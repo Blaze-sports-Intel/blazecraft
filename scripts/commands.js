@@ -1,11 +1,12 @@
 /**
  * @typedef {import('./game-state.js').GameState} GameState
+ * @typedef {import('./agent-bridge.js').AgentBridge} AgentBridge
  */
 
 export class CommandCenter {
   /**
    * @param {GameState} state
-   * @param {{manualAssign?: (workerIds: string[], region: any) => void}=} bridge
+   * @param {AgentBridge=} bridge
    */
   constructor(state, bridge) {
     this.state = state;

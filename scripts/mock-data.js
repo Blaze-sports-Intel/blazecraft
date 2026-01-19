@@ -3,6 +3,7 @@ import { REGIONS, randomPointIn, dist, clamp } from './map.js';
 /**
  * Mock AgentBridge that simulates Claude subagents.
  * @typedef {import('./game-state.js').GameState} GameState
+ * @typedef {import('./agent-bridge.js').AgentBridge} AgentBridge
  */
 
 const TASK_SNIPPETS = [
@@ -44,6 +45,7 @@ function formatInt(n) {
 /**
  * @param {GameState} state
  */
+/** @implements {AgentBridge} */
 export class MockBridge {
   constructor(state) {
     this.state = state;
