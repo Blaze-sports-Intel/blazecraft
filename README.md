@@ -15,7 +15,7 @@ BlazeCraft provides a real-time strategy game interface for monitoring and contr
 - Event log with live updates
 - Minimap overview
 - Agent portrait panel with status meters
-- Demo mode for testing without live agents
+- Demo mode (add `?demo=1`) for simulated agent activity
 
 ## Tech Stack
 
