@@ -1,0 +1,13 @@
+{
+  "name": "blazecraft",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "test": "node --test --import tsx tests/worker.test.ts"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20240214.0",
+    "tsx": "^4.19.2",
+    "typescript": "^5.4.5"
+  }
+}

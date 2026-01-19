@@ -2,6 +2,7 @@ import { GameState } from './game-state.js';
 import { Renderer } from './renderer.js';
 import { UIPanels } from './ui-panels.js';
 import { MockBridge } from './mock-data.js';
+import { DataBridge } from './data-bridge.js';
 import { CommandCenter } from './commands.js';
 import { clamp } from './map.js';
 
@@ -15,6 +16,7 @@ async function init() {
   await renderer.loadTextures();
 
   const bridge = new MockBridge(state);
+  const dataBridge = new DataBridge(state);
   const commands = new CommandCenter(state, bridge);
   const ui = new UIPanels(state, renderer);
 
@@ -36,9 +38,11 @@ async function init() {
     toggleDemo.setAttribute('aria-pressed', String(demoOn));
     if (demoOn) {
       await bridge.connect();
+      await dataBridge.start();
       state.pushScoutLine('Demo mode resumed. Workers rallying.');
     } else {
       bridge.disconnect();
+      dataBridge.stop();
       state.setSelected([]);
       for (const wid of Array.from(state.workers.keys())) state.removeWorker(wid);
       state.events = [];
@@ -49,6 +53,7 @@ async function init() {
 
   // start demo
   await bridge.connect();
+  await dataBridge.start();
 
   // map interactions
   let isPanning = false;
