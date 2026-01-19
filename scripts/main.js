@@ -1,9 +1,9 @@
 import { GameState } from './game-state.js';
 import { Renderer } from './renderer.js';
 import { UIPanels } from './ui-panels.js';
-import { MockBridge } from './mock-data.js';
 import { CommandCenter } from './commands.js';
 import { clamp } from './map.js';
+import { createBridge } from './bridge.js';
 
 async function init() {
   const state = new GameState();
@@ -14,7 +14,8 @@ async function init() {
   const renderer = new Renderer(mapCanvas, minimapCanvas);
   await renderer.loadTextures();
 
-  const bridge = new MockBridge(state);
+  const demoFlag = getDemoFlag();
+  const bridge = await buildBridge(state, demoFlag);
   const commands = new CommandCenter(state, bridge);
   const ui = new UIPanels(state, renderer);
 
@@ -28,26 +29,28 @@ async function init() {
     toggleLog.setAttribute('aria-pressed', String(!collapsed));
   });
 
-  // controls: demo mode
-  let demoOn = true;
   const toggleDemo = document.getElementById('toggleDemo');
-  toggleDemo.addEventListener('click', async () => {
-    demoOn = !demoOn;
-    toggleDemo.setAttribute('aria-pressed', String(demoOn));
-    if (demoOn) {
-      await bridge.connect();
-      state.pushScoutLine('Demo mode resumed. Workers rallying.');
-    } else {
-      bridge.disconnect();
-      state.setSelected([]);
-      for (const wid of Array.from(state.workers.keys())) state.removeWorker(wid);
-      state.events = [];
-      state.pushScoutLine('Demo mode paused.');
-      state.notify();
-    }
-  });
+  if (demoFlag) {
+    let demoOn = true;
+    toggleDemo.addEventListener('click', async () => {
+      demoOn = !demoOn;
+      toggleDemo.setAttribute('aria-pressed', String(demoOn));
+      if (demoOn) {
+        await bridge.connect();
+      } else {
+        bridge.disconnect();
+        state.setSelected([]);
+        for (const wid of Array.from(state.workers.keys())) state.removeWorker(wid);
+        state.events = [];
+        state.notify();
+      }
+    });
+  } else {
+    toggleDemo.hidden = true;
+    toggleDemo.setAttribute('aria-pressed', 'false');
+  }
 
-  // start demo
+  // start bridge
   await bridge.connect();
 
   // map interactions
@@ -197,6 +200,25 @@ async function init() {
   renderer.camera.x = renderer.world.w / 2;
   renderer.camera.y = renderer.world.h / 2;
   clampCamera(renderer, mapCanvas);
+}
+
+function getDemoFlag() {
+  const params = new URLSearchParams(window.location.search);
+  const flag = params.get('demo');
+  return flag === '1' || flag === 'true';
+}
+
+/**
+ * @param {GameState} state
+ * @param {boolean} demoFlag
+ * @returns {Promise<import('./agent-bridge.js').AgentBridge>}
+ */
+async function buildBridge(state, demoFlag) {
+  if (demoFlag) {
+    const { MockBridge } = await import('./mock-data.js');
+    return new MockBridge(state);
+  }
+  return createBridge(state);
 }
 
 /**
