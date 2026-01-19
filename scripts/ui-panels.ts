@@ -1,6 +1,8 @@
 import { formatDuration } from './game-state.js';
+import type { GameState, GameEvent, EventType } from './game-state.js';
+import type { Renderer } from './renderer.js';
 
-const ICONS = {
+const ICONS: Record<EventType, string> = {
   spawn: '⚡',
   task_start: '⛏',
   task_complete: '✅',
@@ -10,14 +12,39 @@ const ICONS = {
   status: '•',
 };
 
-function el(id) { return document.getElementById(id); }
+function el<T extends HTMLElement>(id: string) {
+  const node = document.getElementById(id);
+  if (!node) {
+    throw new Error(`Missing element #${id}`);
+  }
+  return node as T;
+}
 
 export class UIPanels {
-  /**
-   * @param {import('./game-state.js').GameState} state
-   * @param {import('./renderer.js').Renderer} renderer
-   */
-  constructor(state, renderer) {
+  state: GameState;
+  renderer: Renderer;
+  $resCompleted: HTMLElement;
+  $resFiles: HTMLElement;
+  $resWorkers: HTMLElement;
+  $resFailed: HTMLElement;
+  $resDuration: HTMLElement;
+  $resTokens: HTMLElement;
+  $idleAlert: HTMLButtonElement;
+  $idleAlertCount: HTMLElement;
+  $portraitIcon: HTMLElement;
+  $portraitName: HTMLElement;
+  $portraitTask: HTMLElement;
+  $portraitMeter: HTMLElement;
+  $portraitStatus: HTMLElement;
+  $portraitElapsed: HTMLElement;
+  $portraitTokens: HTMLElement;
+  $logFeed: HTMLElement;
+  $logStatus: HTMLElement;
+  $scoutReport: HTMLElement;
+  _idleIndex: number;
+  _lastLogRenderKey: string;
+
+  constructor(state: GameState, renderer: Renderer) {
     this.state = state;
     this.renderer = renderer;
 
@@ -28,7 +55,7 @@ export class UIPanels {
     this.$resDuration = el('resDuration');
     this.$resTokens = el('resTokens');
 
-    this.$idleAlert = el('idleAlert');
+    this.$idleAlert = el<HTMLButtonElement>('idleAlert');
     this.$idleAlertCount = el('idleAlertCount');
 
     this.$portraitIcon = el('portraitIcon');
@@ -76,7 +103,7 @@ export class UIPanels {
     if (idleOrBlocked.length) {
       this.$idleAlert.hidden = false;
       this.$idleAlertCount.textContent = String(idleOrBlocked.length);
-      const hasBlocked = idleOrBlocked.some(w => w.status === 'blocked');
+      const hasBlocked = idleOrBlocked.some((w) => w.status === 'blocked');
       this.$idleAlert.classList.toggle('has-blocked', hasBlocked);
     } else {
       this.$idleAlert.hidden = true;
@@ -92,7 +119,7 @@ export class UIPanels {
       this.$portraitStatus.textContent = w.status;
       this.$portraitElapsed.textContent = formatDuration(Date.now() - w.spawnedAt);
       this.$portraitTokens.textContent = String(w.tokensUsed);
-      const pct = (w.progress >= 0 && w.progress <= 100) ? w.progress : 0;
+      const pct = w.progress >= 0 && w.progress <= 100 ? w.progress : 0;
       this.$portraitMeter.style.width = `${pct}%`;
       this.$portraitMeter.className = `meter-fill status-${w.status}`;
     } else if (selected.length > 1) {
@@ -128,28 +155,14 @@ export class UIPanels {
     }
   }
 
-  renderLog() {
+  private renderLog() {
     const s = this.state;
     const max = 80;
     const items = s.events.slice(0, max);
 
     this.$logStatus.textContent = s.workers.size ? 'Live' : 'Idle';
 
-    this.$logFeed.innerHTML = items.map(evt => {
-      const icon = ICONS[evt.type] || '•';
-      const t = new Date(evt.timestamp);
-      const hh = String(t.getHours()).padStart(2,'0');
-      const mm = String(t.getMinutes()).padStart(2,'0');
-      const ss = String(t.getSeconds()).padStart(2,'0');
-      const stamp = `${hh}:${mm}:${ss}`;
-      const cls = evt.type === 'error' ? 'err' : evt.type === 'task_complete' ? 'ok' : evt.type === 'spawn' ? 'spawn' : '';
-
-      return `<button class="log-item ${cls}" data-worker="${evt.workerId}">
-        <span class="log-time">${stamp}</span>
-        <span class="log-ico">${icon}</span>
-        <span class="log-text">${escapeHtml(evt.details)}</span>
-      </button>`;
-    }).join('');
+    this.$logFeed.innerHTML = items.map((evt) => this.renderLogItem(evt)).join('');
 
     // click handlers
     this.$logFeed.querySelectorAll('button.log-item').forEach((b) => {
@@ -164,9 +177,25 @@ export class UIPanels {
       });
     });
   }
+
+  private renderLogItem(evt: GameEvent) {
+    const icon = ICONS[evt.type] || '•';
+    const t = new Date(evt.timestamp);
+    const hh = String(t.getHours()).padStart(2, '0');
+    const mm = String(t.getMinutes()).padStart(2, '0');
+    const ss = String(t.getSeconds()).padStart(2, '0');
+    const stamp = `${hh}:${mm}:${ss}`;
+    const cls = evt.type === 'error' ? 'err' : evt.type === 'task_complete' ? 'ok' : evt.type === 'spawn' ? 'spawn' : '';
+
+    return `<button class="log-item ${cls}" data-worker="${evt.workerId}">
+      <span class="log-time">${stamp}</span>
+      <span class="log-ico">${icon}</span>
+      <span class="log-text">${escapeHtml(evt.details)}</span>
+    </button>`;
+  }
 }
 
-function escapeHtml(str) {
+function escapeHtml(str: string) {
   return String(str)
     .replaceAll('&', '&amp;')
     .replaceAll('<', '&lt;')

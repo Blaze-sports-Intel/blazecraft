@@ -1,24 +1,56 @@
 /**
  * Minimal state store with pub/sub.
- * @typedef {'idle'|'working'|'moving'|'blocked'|'complete'|'terminated'|'hold'} WorkerStatus
- * @typedef {{x:number,y:number}} Vec2
- * @typedef {{id:string,name:string,status:WorkerStatus,currentTask:string|null,targetRegion:string,position:Vec2,spawnedAt:number,tokensUsed:number,progress:number,errorMessage:string|null,updatedAt:number}} Worker
- * @typedef {'spawn'|'task_start'|'task_complete'|'error'|'terminate'|'command'|'status'} EventType
- * @typedef {{timestamp:number,type:EventType,workerId:string,details:string}} GameEvent
  */
+export type WorkerStatus = 'idle' | 'working' | 'moving' | 'blocked' | 'complete' | 'terminated' | 'hold';
+
+export type Vec2 = { x: number; y: number };
+
+export type Worker = {
+  id: string;
+  name: string;
+  status: WorkerStatus;
+  currentTask: string | null;
+  targetRegion: string;
+  position: Vec2;
+  spawnedAt: number;
+  tokensUsed: number;
+  progress: number;
+  errorMessage: string | null;
+  updatedAt: number;
+};
+
+export type EventType = 'spawn' | 'task_start' | 'task_complete' | 'error' | 'terminate' | 'command' | 'status';
+
+export type GameEvent = {
+  timestamp: number;
+  type: EventType;
+  workerId: string;
+  details: string;
+};
+
+type Stats = {
+  completed: number;
+  files: number;
+  failed: number;
+  tokens: number;
+};
 
 export class GameState {
+  workers: Map<string, Worker>;
+  events: GameEvent[];
+  selected: Set<string>;
+  startedAt: number;
+  scout: string[];
+  stats: Stats;
+  listeners: Set<(state: GameState) => void>;
+
   constructor() {
-    /** @type {Map<string, Worker>} */
     this.workers = new Map();
-    /** @type {GameEvent[]} */
     this.events = [];
-    /** @type {Set<string>} */
     this.selected = new Set();
 
     this.startedAt = Date.now();
 
-    /** @type {string[]} */
     this.scout = [
       'No threats detected.',
       'Demo mode is generating worker activity.',
@@ -31,37 +63,31 @@ export class GameState {
       tokens: 0,
     };
 
-    /** @type {Set<Function>} */
     this.listeners = new Set();
   }
 
-  /** @param {number} n */
-  bumpCompleted(n) {
+  bumpCompleted(n: number) {
     this.stats.completed += n;
     this.notify();
   }
 
-  /** @param {number} n */
-  bumpFiles(n) {
+  bumpFiles(n: number) {
     this.stats.files += n;
     this.notify();
   }
 
-  /** @param {number} n */
-  bumpFailed(n) {
+  bumpFailed(n: number) {
     this.stats.failed += n;
     this.notify();
   }
 
-  /** @param {string} line */
-  pushScoutLine(line) {
+  pushScoutLine(line: string) {
     // newest first
     this.scout = [line, ...this.scout].slice(0, 3);
     this.notify();
   }
 
-  /** @param {(s:GameState)=>void} fn */
-  subscribe(fn) {
+  subscribe(fn: (s: GameState) => void) {
     this.listeners.add(fn);
     fn(this);
     return () => this.listeners.delete(fn);
@@ -71,35 +97,30 @@ export class GameState {
     for (const fn of this.listeners) fn(this);
   }
 
-  /** @param {GameEvent} evt */
-  pushEvent(evt) {
+  pushEvent(evt: GameEvent) {
     this.events.unshift(evt);
     if (this.events.length > 250) this.events.length = 250;
     this.notify();
   }
 
-  /** @param {Worker} worker */
-  upsertWorker(worker) {
+  upsertWorker(worker: Worker) {
     this.workers.set(worker.id, worker);
     this.notify();
   }
 
-  /** @param {string} workerId */
-  removeWorker(workerId) {
+  removeWorker(workerId: string) {
     this.workers.delete(workerId);
     this.selected.delete(workerId);
     this.notify();
   }
 
-  /** @param {string[]} ids */
-  setSelected(ids) {
+  setSelected(ids: string[]) {
     this.selected = new Set(ids);
     this.notify();
   }
 
-  /** @returns {Worker[]} */
-  getSelectedWorkers() {
-    const out = [];
+  getSelectedWorkers(): Worker[] {
+    const out: Worker[] = [];
     for (const id of this.selected) {
       const w = this.workers.get(id);
       if (w) out.push(w);
@@ -107,9 +128,8 @@ export class GameState {
     return out;
   }
 
-  /** @returns {Worker[]} */
-  getIdleOrBlocked() {
-    const out = [];
+  getIdleOrBlocked(): Worker[] {
+    const out: Worker[] = [];
     for (const w of this.workers.values()) {
       if (w.status === 'idle' || w.status === 'blocked') out.push(w);
     }
@@ -128,10 +148,9 @@ export class GameState {
   }
 }
 
-/** @param {number} ms */
-export function formatDuration(ms) {
+export function formatDuration(ms: number) {
   const total = Math.max(0, Math.floor(ms / 1000));
   const m = Math.floor(total / 60);
   const s = total % 60;
-  return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
 }

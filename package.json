@@ -1,0 +1,12 @@
+{
+  "name": "blazecraft",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build:ts": "tsc -p tsconfig.json",
+    "build": "npm run build:ts && node build/copy-assets.mjs"
+  },
+  "devDependencies": {
+    "typescript": "^5.4.5"
+  }
+}

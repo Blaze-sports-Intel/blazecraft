@@ -1,10 +1,11 @@
-import { REGIONS, randomPointIn, dist, clamp } from './map.js';
+import { REGIONS, randomPointIn, clamp } from './map.js';
+import type { GameState, Worker, GameEvent } from './game-state.js';
+import type { MapRegion } from './map.js';
+import type { CommandBridge } from './commands.js';
 
 /**
  * Mock AgentBridge that simulates Claude subagents.
- * @typedef {import('./game-state.js').GameState} GameState
  */
-
 const TASK_SNIPPETS = [
   'Refactor component boundary',
   'Fix failing unit tests',
@@ -18,48 +19,56 @@ const TASK_SNIPPETS = [
   'Extract state store and event bus',
 ];
 
-function rnd(arr) { return arr[Math.floor(Math.random() * arr.length)]; }
+type MotionState = {
+  vx: number;
+  vy: number;
+  goal: { x: number; y: number };
+  speed: number;
+};
+
+function rnd<T>(arr: T[]) {
+  return arr[Math.floor(Math.random() * arr.length)];
+}
 
 function id() {
   return Math.random().toString(16).slice(2, 10);
 }
 
-function now() { return Date.now(); }
+function now() {
+  return Date.now();
+}
 
 function pickRegion() {
   // bias to goldmine + lumber
-  const weighted = [];
+  const weighted: MapRegion[] = [];
   for (const r of REGIONS) {
     const w = r.type === 'goldmine' ? 5 : r.type === 'lumber' ? 3 : r.type === 'townhall' ? 2 : 1;
-    for (let i = 0; i < w; i++) weighted.push(r);
+    for (let i = 0; i < w; i += 1) weighted.push(r);
   }
   return rnd(weighted);
 }
 
-/** @param {number} n */
-function formatInt(n) {
+function formatInt(n: number) {
   return n.toLocaleString(undefined, { maximumFractionDigits: 0 });
 }
 
-/**
- * @param {GameState} state
- */
-export class MockBridge {
-  constructor(state) {
+export class MockBridge implements CommandBridge {
+  state: GameState;
+  running: boolean;
+  timers: Array<ReturnType<typeof setInterval>>;
+  motion: Map<string, MotionState>;
+
+  constructor(state: GameState) {
     this.state = state;
     this.running = false;
     this.timers = [];
-
-    /** @type {Map<string, {vx:number,vy:number,goal:{x:number,y:number},speed:number}>} */
     this.motion = new Map();
   }
 
   /**
    * Manual assignment hook used by the command card (right-click a region).
-   * @param {string[]} workerIds
-   * @param {import('./map.js').MapRegion} region
    */
-  manualAssign(workerIds, region) {
+  manualAssign(workerIds: string[], region: MapRegion) {
     for (const wid of workerIds) {
       const w = this.state.workers.get(wid);
       if (!w) continue;
@@ -74,7 +83,7 @@ export class MockBridge {
       this.motion.set(w.id, { vx: 0, vy: 0, goal, speed: 1.7 + Math.random() * 1.8 });
 
       this.state.upsertWorker({ ...w });
-      this.state.pushEvent({ type: 'command', workerId: w.id, details: `Assigned to ${region.name}.` });
+      this.pushEvent({ type: 'command', workerId: w.id, details: `Assigned to ${region.name}.` });
     }
   }
 
@@ -96,20 +105,20 @@ export class MockBridge {
     this.timers = [];
   }
 
-  maybeSpawn() {
+  private maybeSpawn() {
     if (!this.running) return;
     const max = 10;
     if (this.state.workers.size >= max) return;
     if (Math.random() < 0.35) this.spawn();
   }
 
-  spawn() {
-    const town = REGIONS.find(r => r.id === 'townhall') || REGIONS[0];
+  private spawn() {
+    const town = REGIONS.find((r) => r.id === 'townhall') || REGIONS[0];
     const start = randomPointIn(town);
     const target = pickRegion();
 
     const wid = `w-${id()}`;
-    const w = {
+    const w: Worker = {
       id: wid,
       name: `Subagent-${Math.floor(1 + Math.random() * 99)}`,
       status: 'moving',
@@ -124,14 +133,14 @@ export class MockBridge {
     };
 
     this.state.upsertWorker(w);
-    this.state.pushEvent({ type: 'spawn', workerId: w.id, details: `${w.name} rallied.` });
+    this.pushEvent({ type: 'spawn', workerId: w.id, details: `${w.name} rallied.` });
 
     // movement goal is a random point in target region
     const goal = randomPointIn(target);
     this.motion.set(w.id, { vx: 0, vy: 0, goal, speed: 1.6 + Math.random() * 1.6 });
   }
 
-  step() {
+  private step() {
     if (!this.running) return;
 
     for (const w of this.state.workers.values()) {
@@ -159,9 +168,9 @@ export class MockBridge {
           w.updatedAt = now();
 
           if (w.status === 'working') {
-            this.state.pushEvent({ type: 'task_start', workerId: w.id, details: `Started: ${w.currentTask}` });
+            this.pushEvent({ type: 'task_start', workerId: w.id, details: `Started: ${w.currentTask}` });
           } else {
-            this.state.pushEvent({ type: 'status', workerId: w.id, details: `Awaiting orders.` });
+            this.pushEvent({ type: 'status', workerId: w.id, details: 'Awaiting orders.' });
           }
         }
 
@@ -189,7 +198,7 @@ export class MockBridge {
           w.errorMessage = null;
           w.updatedAt = now();
           this.motion.set(w.id, { vx: 0, vy: 0, goal: randomPointIn(target), speed: 1.6 + Math.random() * 1.6 });
-          this.state.pushEvent({ type: 'status', workerId: w.id, details: `Re-tasked.` });
+          this.pushEvent({ type: 'status', workerId: w.id, details: 'Re-tasked.' });
         }
         this.state.upsertWorker({ ...w });
         continue;
@@ -202,7 +211,7 @@ export class MockBridge {
           w.status = 'working';
           w.errorMessage = null;
           w.updatedAt = now();
-          this.state.pushEvent({ type: 'status', workerId: w.id, details: `Recovered; resumed.` });
+          this.pushEvent({ type: 'status', workerId: w.id, details: 'Recovered; resumed.' });
         }
         this.state.upsertWorker({ ...w });
         continue;
@@ -223,7 +232,7 @@ export class MockBridge {
           w.status = 'blocked';
           w.errorMessage = 'Merge conflict in core module.';
           this.state.bumpFailed(1);
-          this.state.pushEvent({ type: 'error', workerId: w.id, details: `Blocked: ${w.errorMessage}` });
+          this.pushEvent({ type: 'error', workerId: w.id, details: `Blocked: ${w.errorMessage}` });
           this.state.upsertWorker({ ...w });
           continue;
         }
@@ -232,7 +241,7 @@ export class MockBridge {
           w.status = 'complete';
           w.updatedAt = now();
           this.state.bumpCompleted(1);
-          this.state.pushEvent({ type: 'task_complete', workerId: w.id, details: `Completed: ${w.currentTask}` });
+          this.pushEvent({ type: 'task_complete', workerId: w.id, details: `Completed: ${w.currentTask}` });
 
           // despawn soon
           setTimeout(() => {
@@ -242,7 +251,7 @@ export class MockBridge {
             still.status = 'terminated';
             still.updatedAt = now();
             this.state.upsertWorker({ ...still });
-            this.state.pushEvent({ type: 'terminate', workerId: still.id, details: `${still.name} dismissed.` });
+            this.pushEvent({ type: 'terminate', workerId: still.id, details: `${still.name} dismissed.` });
             setTimeout(() => this.state.removeWorker(still.id), 900);
           }, 1400);
         }
@@ -257,12 +266,12 @@ export class MockBridge {
     }
   }
 
-  heartbeat() {
+  private heartbeat() {
     this.state.tickStats();
 
     // keep scout report fresh
-    const idle = this.state.getIdleOrBlocked().filter(w => w.status === 'idle').length;
-    const blocked = this.state.getIdleOrBlocked().filter(w => w.status === 'blocked').length;
+    const idle = this.state.getIdleOrBlocked().filter((w) => w.status === 'idle').length;
+    const blocked = this.state.getIdleOrBlocked().filter((w) => w.status === 'blocked').length;
     const active = this.state.workers.size;
 
     const msg = blocked
@@ -272,5 +281,9 @@ export class MockBridge {
         : `${formatInt(active)} worker${active === 1 ? '' : 's'} executing cleanly.`;
 
     this.state.pushScoutLine(msg);
+  }
+
+  private pushEvent(event: Omit<GameEvent, 'timestamp'>) {
+    this.state.pushEvent({ ...event, timestamp: now() });
   }
 }
