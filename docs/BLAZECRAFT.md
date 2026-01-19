@@ -48,8 +48,10 @@ BlazeCraft uses BSI design tokens:
 
 1. Open `blazecraft.app`
 2. Demo mode shows simulated agent activity
-3. Connect real agents via WebSocket/SSE (future)
-4. Use command card to control workers (Stop, Hold, Resume, etc.)
+3. Live mode connects to production event streams by default
+4. Append `?demo=1` or `?bridge=mock` to force demo mode
+5. Append `?transport=ws` to force WebSocket instead of SSE
+6. Use command card to control workers (Stop, Hold, Resume, etc.)
 
 ## Commands
 
@@ -62,34 +64,65 @@ BlazeCraft uses BSI design tokens:
 | Inspect | I | View agent details |
 | Terminate | X | End agent session |
 
-## Future Integration Options
+## Production Event Streams
 
-### A. WebSocket from BSI Ticker Worker
-```javascript
-const ws = new WebSocket('wss://ticker.blazesportsintel.com/agents');
-ws.onmessage = (e) => gameState.dispatch(JSON.parse(e.data));
-```
+### Connection URLs (Production)
 
-### B. SSE from Prediction API
-```javascript
-const evtSource = new EventSource('https://api.blazesportsintel.com/v1/agent-stream');
-evtSource.onmessage = (e) => gameState.dispatch(JSON.parse(e.data));
-```
+| Transport | URL |
+|-----------|-----|
+| SSE | `https://blazecraft.app/api/agent-stream` |
+| WebSocket | `wss://blazecraft.app/api/agent-stream` |
+| Command POST | `https://blazecraft.app/api/agent-command` |
 
-### C. Claude Code Hook Integration
-Create hook in `~/.claude/hooks/` that POSTs events to BlazeCraft.
+### Agent Event Schema (Production)
 
-## Agent Event Schema
+All timestamps must be in **America/Chicago** with an explicit offset (`YYYY-MM-DDTHH:mm:ss-05:00` or `-06:00`).
 
 ```typescript
-interface AgentEvent {
-  type: 'spawn' | 'task_start' | 'task_complete' | 'error' | 'terminate';
-  agentId: string;
-  timestamp: string; // America/Chicago timezone
+type WorkerStatus = 'idle' | 'working' | 'moving' | 'blocked' | 'complete' | 'terminated' | 'hold';
+type EventType = 'spawn' | 'task_start' | 'task_complete' | 'error' | 'terminate' | 'command' | 'status';
+
+interface SourceAttribution {
+  name: string;
+  url: string;
+  confidence: number; // 0..1
+  confidenceInterval: [number, number]; // 0..1
+}
+
+interface WorkerPayload {
+  id: string;
+  name: string;
+  status: WorkerStatus;
+  currentTask: string | null;
+  targetRegion: 'goldmine' | 'lumber' | 'townhall' | 'ground';
+  position: { x: number; y: number };
+  spawnedAt: string;
+  updatedAt: string;
+  tokensUsed: number;
+  progress: number;
+  errorMessage: string | null;
+  source?: SourceAttribution;
+}
+
+interface StreamEnvelope {
+  type: 'worker.upsert' | 'worker.remove' | 'event' | 'stats' | 'scout';
+  timestamp: string;
+  data:
+    | { worker: WorkerPayload }
+    | { workerId: string }
+    | { event: { type: EventType; workerId: string; details: string } }
+    | { completed: number; files: number; failed: number; tokens: number }
+    | { line: string };
+}
+
+interface CommandAssignPayload {
+  type: 'command.assign';
+  timestamp: string;
+  timestampMs: number;
   data: {
-    task?: string;
-    tokens?: number;
-    region?: 'goldmine' | 'lumber' | 'townhall' | 'ground';
+    workerIds: string[];
+    regionId: string;
+    regionName: string;
   };
 }
 ```
