@@ -47,9 +47,8 @@ BlazeCraft uses BSI design tokens:
 ## Usage
 
 1. Open `blazecraft.app`
-2. Demo mode shows simulated agent activity
-3. Connect real agents via WebSocket/SSE (future)
-4. Use command card to control workers (Stop, Hold, Resume, etc.)
+2. Add `?demo=1` to enable demo mode with simulated agent activity
+3. Use command card to control workers (Stop, Hold, Resume, etc.)
 
 ## Commands
 
@@ -61,23 +60,6 @@ BlazeCraft uses BSI design tokens:
 | Assign | A | Reassign to new task |
 | Inspect | I | View agent details |
 | Terminate | X | End agent session |
-
-## Future Integration Options
-
-### A. WebSocket from BSI Ticker Worker
-```javascript
-const ws = new WebSocket('wss://ticker.blazesportsintel.com/agents');
-ws.onmessage = (e) => gameState.dispatch(JSON.parse(e.data));
-```
-
-### B. SSE from Prediction API
-```javascript
-const evtSource = new EventSource('https://api.blazesportsintel.com/v1/agent-stream');
-evtSource.onmessage = (e) => gameState.dispatch(JSON.parse(e.data));
-```
-
-### C. Claude Code Hook Integration
-Create hook in `~/.claude/hooks/` that POSTs events to BlazeCraft.
 
 ## Agent Event Schema
 

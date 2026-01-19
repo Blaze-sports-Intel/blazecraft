@@ -1,12 +1,13 @@
 import { GameState } from './game-state.js';
 import { Renderer } from './renderer.js';
 import { UIPanels } from './ui-panels.js';
-import { MockBridge } from './mock-data.js';
 import { CommandCenter } from './commands.js';
 import { clamp } from './map.js';
 
 async function init() {
   const state = new GameState();
+
+  const demoEnabled = new URLSearchParams(window.location.search).get('demo') === '1';
 
   const mapCanvas = /** @type {HTMLCanvasElement} */ (document.getElementById('mapCanvas'));
   const minimapCanvas = /** @type {HTMLCanvasElement} */ (document.getElementById('minimapCanvas'));
@@ -14,8 +15,21 @@ async function init() {
   const renderer = new Renderer(mapCanvas, minimapCanvas);
   await renderer.loadTextures();
 
-  const bridge = new MockBridge(state);
-  const commands = new CommandCenter(state, bridge);
+  const toggleDemo = document.getElementById('toggleDemo');
+  let bridge = null;
+  let demoOn = false;
+
+  if (demoEnabled) {
+    const { MockBridge } = await import('./mock-data.js');
+    bridge = new MockBridge(state);
+    demoOn = true;
+    toggleDemo.removeAttribute('hidden');
+  } else {
+    toggleDemo.setAttribute('hidden', '');
+    toggleDemo.setAttribute('aria-disabled', 'true');
+  }
+
+  const commands = new CommandCenter(state, bridge || {});
   const ui = new UIPanels(state, renderer);
 
   // keep UI in sync
@@ -29,26 +43,29 @@ async function init() {
   });
 
   // controls: demo mode
-  let demoOn = true;
-  const toggleDemo = document.getElementById('toggleDemo');
-  toggleDemo.addEventListener('click', async () => {
-    demoOn = !demoOn;
-    toggleDemo.setAttribute('aria-pressed', String(demoOn));
-    if (demoOn) {
-      await bridge.connect();
-      state.pushScoutLine('Demo mode resumed. Workers rallying.');
-    } else {
-      bridge.disconnect();
-      state.setSelected([]);
-      for (const wid of Array.from(state.workers.keys())) state.removeWorker(wid);
-      state.events = [];
-      state.pushScoutLine('Demo mode paused.');
-      state.notify();
-    }
-  });
+  toggleDemo.setAttribute('aria-pressed', String(demoOn));
+  if (demoEnabled && bridge) {
+    toggleDemo.addEventListener('click', async () => {
+      demoOn = !demoOn;
+      toggleDemo.setAttribute('aria-pressed', String(demoOn));
+      if (demoOn) {
+        await bridge.connect();
+        state.pushScoutLine('Demo mode resumed. Workers rallying.');
+      } else {
+        bridge.disconnect();
+        state.setSelected([]);
+        for (const wid of Array.from(state.workers.keys())) state.removeWorker(wid);
+        state.events = [];
+        state.pushScoutLine('Demo mode paused.');
+        state.notify();
+      }
+    });
+  }
 
   // start demo
-  await bridge.connect();
+  if (demoOn && bridge) {
+    await bridge.connect();
+  }
 
   // map interactions
   let isPanning = false;
