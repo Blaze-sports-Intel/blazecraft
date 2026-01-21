@@ -355,7 +355,7 @@ export class LiveBridge {
       const now = Date.now();
       if (now - this.lastErrorAt > 8000) {
         this.lastErrorAt = now;
-        this.state.pushScoutLine('Live bridge unavailable.');
+        this.state.pushScoutLine('Live bridge: initial connection failed. Retrying.');
       }
       console.error(err);
     }
