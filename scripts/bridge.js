@@ -248,12 +248,13 @@ function toError(message) {
 export class LiveBridge {
   /**
    * @param {GameState} state
-   * @param {{endpoint?: string, pollIntervalMs?: number}=} options
+   * @param {{endpoint?: string, assignEndpoint?: string, pollIntervalMs?: number}=} options
    */
   constructor(state, options = {}) {
     this.state = state;
-    this.endpoint = options.endpoint || new URL('/api/bridge', window.location.origin).toString();
-    this.assignEndpoint = new URL('/api/bridge/assign', window.location.origin).toString();
+    const baseEndpoint = options.endpoint || new URL('/api/bridge', window.location.origin).toString();
+    this.endpoint = baseEndpoint;
+    this.assignEndpoint = options.assignEndpoint || new URL('./assign', this.endpoint).toString();
     this.pollIntervalMs = options.pollIntervalMs || DEFAULT_POLL_MS;
     this.running = false;
     this.cursor = null;
