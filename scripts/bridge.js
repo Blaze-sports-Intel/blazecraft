@@ -266,7 +266,14 @@ export class LiveBridge {
   async connect() {
     if (this.running) return;
     this.running = true;
-    await this.fetchSnapshot();
+    try {
+      await this.fetchSnapshot();
+    } catch (error) {
+      // If the initial snapshot fails, do not start polling.
+      this.running = false;
+      console.error('Failed to fetch initial bridge snapshot', error);
+      return;
+    }
     this.poller = setInterval(() => {
       void this.poll();
     }, this.pollIntervalMs);
