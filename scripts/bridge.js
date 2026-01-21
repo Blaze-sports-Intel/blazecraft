@@ -349,7 +349,7 @@ export class LiveBridge {
       if (!payload || !Array.isArray(payload.workers)) {
         throw toError('Bridge snapshot missing worker data');
       }
-      if (payload.cursor) this.cursor = payload.cursor;
+      if (payload.cursor !== undefined) this.cursor = payload.cursor;
       applySnapshot(this.state, /** @type {BridgeSnapshot} */ (payload));
     } catch (err) {
       const now = Date.now();
