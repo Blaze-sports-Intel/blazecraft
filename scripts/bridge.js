@@ -68,7 +68,7 @@ function applySnapshot(state, snapshot) {
   state.workers = workers;
 
   if (Array.isArray(snapshot.events)) {
-    state.events = snapshot.events.slice(0, 250);
+    state.events = snapshot.events.slice(-250).reverse();
   }
 
   if (Array.isArray(snapshot.scout)) {
