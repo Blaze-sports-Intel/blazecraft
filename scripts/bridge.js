@@ -302,7 +302,7 @@ export class LiveBridge {
 
       if (!res.ok) throw toError(`Assign failed (${res.status})`);
       const payload = normalizePayload(await res.json());
-      if (payload) applyDelta(this.state, payload);
+      if (payload && this.running) applyDelta(this.state, payload);
     } catch (err) {
       const now = Date.now();
       if (now - this.lastErrorAt > 8000) {
