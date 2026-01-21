@@ -1,11 +1,10 @@
-import { cp, mkdir, rm } from 'node:fs/promises';
+import { cp, mkdir } from 'node:fs/promises';
 import { existsSync } from 'node:fs';
 import path from 'node:path';
 
 const root = process.cwd();
 const distDir = path.join(root, 'dist');
 
-await rm(distDir, { recursive: true, force: true });
 await mkdir(distDir, { recursive: true });
 
 const copyTargets = [
