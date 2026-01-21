@@ -7,10 +7,56 @@
  * @typedef {import('./game-state.js').GameEvent} GameEvent
  */
 
-/** @typedef {{completed:number,files:number,failed:number,tokens:number}} BridgeStats */
-/** @typedef {{workers:Worker[],events:GameEvent[],scout:string[],stats:BridgeStats,cursor?:string,timestamp?:string}} BridgeSnapshot */
-/** @typedef {{workers?:Worker[],events?:GameEvent[],scout?:string[],stats?:BridgeStats,cursor?:string,timestamp?:string}} BridgeDelta */
+/**
+ * Aggregate statistics about bridge processing.
+ *
+ * @typedef BridgeStats
+ * @property {number} completed Number of completed items (e.g. processed workers or tasks).
+ * @property {number} files Number of files involved in processing.
+ * @property {number} failed Number of items that failed processing.
+ * @property {number} tokens Number of tokens consumed (for metering or billing).
+ */
 
+/**
+ * Full state snapshot returned by the live bridge endpoint.
+ * Used to initialize or completely replace the client's {@link GameState}.
+ *
+ * @typedef BridgeSnapshot
+ * @property {Worker[]} workers Current set of workers keyed by their {@link Worker.id}.
+ * @property {GameEvent[]} events Recent game events associated with the workers.
+ * @property {string[]} scout Latest "scout" messages or diagnostics to display.
+ * @property {BridgeStats} stats Aggregate statistics for the current snapshot.
+ * @property {string} [cursor]
+ *   Opaque position token returned by the bridge backend representing this snapshot.
+ *   Pass this value back to the server on the next poll request to receive only
+ *   changes that occurred after this snapshot (incremental polling). Consumers
+ *   should treat this as an opaque string and must not attempt to inspect or
+ *   modify it.
+ * @property {string} [timestamp]
+ *   ISO-8601 UTC timestamp indicating when the snapshot was generated on the
+ *   server. This can be used by callers for freshness checks or to order
+ *   multiple snapshots, but it is not required for correct cursor usage.
+ */
+
+/**
+ * Incremental update (delta) returned by the live bridge endpoint.
+ * Applies changes on top of an existing {@link GameState}.
+ *
+ * @typedef BridgeDelta
+ * @property {Worker[]} [workers] Workers that were added or updated since the last poll.
+ * @property {GameEvent[]} [events] Events that occurred since the last snapshot or delta.
+ * @property {string[]} [scout] Updated "scout" messages or diagnostics.
+ * @property {BridgeStats} [stats] Updated aggregate statistics to merge into the current stats.
+ * @property {string} [cursor]
+ *   Opaque position token representing the state after applying this delta.
+ *   When present, pass this value back on the next poll to continue incremental
+ *   updates from this point. As with snapshot cursors, callers must treat it as
+ *   an opaque value.
+ * @property {string} [timestamp]
+ *   ISO-8601 UTC timestamp indicating when this delta was generated on the
+ *   server. Callers may use this for freshness checks or ordering relative to
+ *   other payloads.
+ */
 const DEFAULT_POLL_MS = 2000;
 
 /**
