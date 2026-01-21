@@ -64,8 +64,11 @@ const DEFAULT_POLL_MS = 2000;
  * @param {BridgeSnapshot} snapshot
  */
 function applySnapshot(state, snapshot) {
-  const workers = new Map(snapshot.workers.map((worker) => [worker.id, worker]));
-  state.workers = workers;
+  // Update the existing workers Map in-place to preserve references.
+  state.workers.clear();
+  for (const worker of snapshot.workers) {
+    state.workers.set(worker.id, worker);
+  }
 
   if (Array.isArray(snapshot.events)) {
     state.events = snapshot.events.slice(-250).reverse();
