@@ -81,8 +81,29 @@ function applySnapshot(state, snapshot) {
 
   if (state.selected.size) {
     const keep = new Set();
+    /** @type {string[]} */
+    const removed = [];
     for (const id of state.selected) {
-      if (state.workers.has(id)) keep.add(id);
+      if (state.workers.has(id)) {
+        keep.add(id);
+      } else {
+        removed.push(id);
+      }
+    }
+
+    if (removed.length) {
+      const message =
+        removed.length === 1
+          ? `Worker ${removed[0]} is no longer active; selection updated.`
+          : `${removed.length} selected workers are no longer active; selection updated.`;
+
+      if (!Array.isArray(state.scout)) {
+        state.scout = [];
+      }
+      state.scout.unshift(message);
+      if (state.scout.length > 3) {
+        state.scout.length = 3;
+      }
     }
     state.selected = keep;
   }
