@@ -17,8 +17,12 @@ async function init() {
 
   const params = new URLSearchParams(window.location.search);
   const demoParam = params.get('demo') === '1';
-  const devToggle = window.location.hostname === 'localhost' || window.location.hostname.endsWith('.local');
-  let demoOn = demoParam || devToggle;
+  const isDevEnvironment =
+    window.location.hostname === 'localhost' ||
+    window.location.hostname.endsWith('.local');
+  // Backwards-compatible alias; prefer `isDevEnvironment` for new code.
+  const devToggle = isDevEnvironment;
+  let demoOn = demoParam || isDevEnvironment;
 
   let bridge = demoOn ? new MockBridge(state) : new LiveBridge(state);
   const commands = new CommandCenter(state, bridge);
