@@ -86,7 +86,7 @@ export class CommandCenter {
   private stopWorker(w: Worker) {
     w.status = 'idle';
     w.progress = 0;
-    w.currentTask = w.currentTask;
+    w.currentTask = null;
     w.updatedAt = Date.now();
     this.state.upsertWorker({ ...w });
     this.pushEvent({ type: 'command', workerId: w.id, details: 'Stopped.' });
