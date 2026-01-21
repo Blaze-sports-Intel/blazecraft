@@ -75,11 +75,120 @@ function applyDelta(state, delta) {
  * @param {unknown} payload
  * @returns {BridgeSnapshot | BridgeDelta | null}
  */
+function isPlainObject(value) {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/**
+ * @param {any} stats
+ * @returns {stats is BridgeStats}
+ */
+function isValidBridgeStats(stats) {
+  if (!isPlainObject(stats)) return false;
+  return (
+    typeof stats.completed === 'number' &&
+    typeof stats.files === 'number' &&
+    typeof stats.failed === 'number' &&
+    typeof stats.tokens === 'number'
+  );
+}
+
+/**
+ * @param {any} workers
+ * @returns {workers is Worker[]}
+ */
+function isValidWorkersArray(workers) {
+  if (!Array.isArray(workers)) return false;
+  for (const worker of workers) {
+    if (!isPlainObject(worker)) return false;
+    if (typeof worker.id !== 'string') return false;
+  }
+  return true;
+}
+
+/**
+ * @param {unknown} payload
+ * @returns {BridgeSnapshot | BridgeDelta | null}
+ */
 function normalizePayload(payload) {
   if (!payload || typeof payload !== 'object') return null;
-  const data = /** @type {any} */ (payload).data ?? payload;
-  if (!data || typeof data !== 'object') return null;
-  return /** @type {BridgeSnapshot | BridgeDelta} */ (data);
+
+  /** @type {any} */
+  const raw = /** @type {any} */ (payload).data ?? payload;
+  if (!raw || typeof raw !== 'object') return null;
+
+  /** @type {any} */
+  const data = raw;
+
+  const hasWorkers = 'workers' in data;
+  const hasEvents = 'events' in data;
+  const hasScout = 'scout' in data;
+  const hasStats = 'stats' in data;
+
+  // Try to interpret as a full snapshot if all required snapshot fields are present.
+  if (hasWorkers && hasEvents && hasScout && hasStats) {
+    if (
+      !isValidWorkersArray(data.workers) ||
+      !Array.isArray(data.events) ||
+      !Array.isArray(data.scout) ||
+      !isValidBridgeStats(data.stats)
+    ) {
+      return null;
+    }
+
+    /** @type {BridgeSnapshot} */
+    const snapshot = {
+      workers: data.workers,
+      events: data.events,
+      scout: data.scout,
+      stats: data.stats,
+      cursor: typeof data.cursor === 'string' ? data.cursor : undefined,
+      timestamp: typeof data.timestamp === 'string' ? data.timestamp : undefined,
+    };
+    return snapshot;
+  }
+
+  // Otherwise, interpret as a delta with optional fields.
+  /** @type {BridgeDelta} */
+  const delta = {};
+
+  if (hasWorkers && isValidWorkersArray(data.workers)) {
+    delta.workers = data.workers;
+  }
+
+  if (hasEvents && Array.isArray(data.events)) {
+    delta.events = data.events;
+  }
+
+  if (hasScout && Array.isArray(data.scout)) {
+    delta.scout = data.scout;
+  }
+
+  if (hasStats && isValidBridgeStats(data.stats)) {
+    delta.stats = data.stats;
+  }
+
+  if (typeof data.cursor === 'string') {
+    delta.cursor = data.cursor;
+  }
+
+  if (typeof data.timestamp === 'string') {
+    delta.timestamp = data.timestamp;
+  }
+
+  // If nothing valid was found, treat as malformed.
+  if (
+    delta.workers === undefined &&
+    delta.events === undefined &&
+    delta.scout === undefined &&
+    delta.stats === undefined &&
+    delta.cursor === undefined &&
+    delta.timestamp === undefined
+  ) {
+    return null;
+  }
+
+  return delta;
 }
 
 /**
