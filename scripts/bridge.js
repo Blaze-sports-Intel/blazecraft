@@ -159,7 +159,7 @@ export class LiveBridge {
       const res = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
       if (!res.ok) throw toError(`Bridge poll failed (${res.status})`);
       const payload = normalizePayload(await res.json());
-      if (payload) {
+      if (payload && this.running) {
         if (payload.cursor) this.cursor = payload.cursor;
         applyDelta(this.state, payload);
       }
