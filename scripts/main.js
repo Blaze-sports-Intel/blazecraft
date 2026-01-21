@@ -32,7 +32,9 @@ async function init() {
     const prev = bridge;
     bridge = nextBridge;
     commands.bridge = bridge;
-    prev.disconnect?.();
+    if (prev?.disconnect) {
+      await prev.disconnect();
+    }
     await bridge.connect();
     state.pushScoutLine(nextDemoOn ? 'Demo mode engaged.' : 'Live bridge connected.');
   };
