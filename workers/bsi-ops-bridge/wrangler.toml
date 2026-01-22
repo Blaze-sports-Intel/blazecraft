@@ -1,0 +1,31 @@
+name = "bsi-ops-bridge"
+main = "index.ts"
+compatibility_date = "2024-01-01"
+
+# Environment variables
+[vars]
+ENVIRONMENT = "development"
+
+# KV Namespace bindings
+[[kv_namespaces]]
+binding = "BSI_OPS_METRICS"
+id = "1663323cd40041fe9ff42fb4eece0aad"
+
+[[kv_namespaces]]
+binding = "BSI_OPS_EVENTS"
+id = "191eb9c9393040a4af5f9d7c704e00c8"
+
+# D1 Database binding
+[[d1_databases]]
+binding = "BSI_GAME_DB"
+database_name = "bsi-game-db"
+database_id = "88eb676f-af0f-470c-a46a-b9429f5b51f3"
+
+# Cron triggers - poll every 30 seconds
+[triggers]
+crons = ["*/30 * * * *"]
+
+# Routes
+[[routes]]
+pattern = "blazesportsintel.com/api/ops/*"
+zone_name = "blazesportsintel.com"

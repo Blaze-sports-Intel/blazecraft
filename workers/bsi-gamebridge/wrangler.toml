@@ -1,0 +1,68 @@
+# BSI GameBridge Worker
+# Bridges BSI sports data to BlazeCraft game events via SSE
+
+name = "bsi-gamebridge"
+main = "index.ts"
+compatibility_date = "2024-01-01"
+workers_dev = true
+
+# KV Namespaces (shared across environments)
+[[kv_namespaces]]
+binding = "BSI_GAMEBRIDGE_SNAPSHOT"
+id = "264bbf8a152e469d9fc6a46d7b354bd1"
+
+[[kv_namespaces]]
+binding = "BSI_GAMEBRIDGE_DELTAS"
+id = "2f3461bdcbaa4ba6a9fe1565cac088f5"
+
+# Ops deltas from bsi-ops-bridge worker (create with: wrangler kv:namespace create BSI_OPS_DELTAS)
+[[kv_namespaces]]
+binding = "BSI_OPS_DELTAS"
+id = "REPLACE_WITH_OPS_DELTAS_KV_ID"
+
+# Development settings
+[env.development]
+vars = { ENVIRONMENT = "development" }
+[[env.development.kv_namespaces]]
+binding = "BSI_GAMEBRIDGE_SNAPSHOT"
+id = "264bbf8a152e469d9fc6a46d7b354bd1"
+[[env.development.kv_namespaces]]
+binding = "BSI_GAMEBRIDGE_DELTAS"
+id = "2f3461bdcbaa4ba6a9fe1565cac088f5"
+[[env.development.kv_namespaces]]
+binding = "BSI_OPS_DELTAS"
+id = "REPLACE_WITH_OPS_DELTAS_KV_ID"
+
+# Production settings
+[env.production]
+vars = { ENVIRONMENT = "production" }
+[[env.production.kv_namespaces]]
+binding = "BSI_GAMEBRIDGE_SNAPSHOT"
+id = "264bbf8a152e469d9fc6a46d7b354bd1"
+[[env.production.kv_namespaces]]
+binding = "BSI_GAMEBRIDGE_DELTAS"
+id = "2f3461bdcbaa4ba6a9fe1565cac088f5"
+[[env.production.kv_namespaces]]
+binding = "BSI_OPS_DELTAS"
+id = "REPLACE_WITH_OPS_DELTAS_KV_ID"
+[env.production.triggers]
+crons = ["* * * * *"]
+
+# Route to custom domain (same-origin with blazecraft.app frontend)
+[[routes]]
+pattern = "blazecraft.app/api/gamebridge/*"
+zone_name = "blazecraft.app"
+
+# Cron trigger for polling live sports data (every minute)
+[triggers]
+crons = ["* * * * *"]
+
+# Optional: Secrets for BSI API access
+# Set with: wrangler secret put BSI_API_KEY
+# Set with: wrangler secret put BSI_TICKER_URL
+
+# Deploy:
+# wrangler deploy --env production
+#
+# Local dev:
+# wrangler dev
