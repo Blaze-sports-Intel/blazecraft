@@ -42,6 +42,10 @@ export class Renderer {
     /** @type {Map<string, number>} */
     this.regionActivity = new Map();
 
+    /** Minimap visibility toggles */
+    this.showTerrain = true;
+    this.showUnits = true;
+
     this.world = { w: 1280, h: 720 };
 
     this.resize();
@@ -428,33 +432,37 @@ export class Renderer {
     const sx = w / this.world.w;
     const sy = h / this.world.h;
 
-    // regions
-    for (const r of REGIONS) {
-      const b = r.bounds;
-      ctx.save();
-      const last = this.regionActivity.get(r.id) || 0;
-      const age = last ? (Date.now() - last) : 999999;
-      const fog = clamp(age / 20000, 0, 1);
+    // regions (terrain)
+    if (this.showTerrain) {
+      for (const r of REGIONS) {
+        const b = r.bounds;
+        ctx.save();
+        const last = this.regionActivity.get(r.id) || 0;
+        const age = last ? (Date.now() - last) : 999999;
+        const fog = clamp(age / 20000, 0, 1);
 
-      ctx.fillStyle = `rgba(0,0,0,${0.25 + fog * 0.55})`;
-      ctx.fillRect(b.x * sx, b.y * sy, b.width * sx, b.height * sy);
+        ctx.fillStyle = `rgba(0,0,0,${0.25 + fog * 0.55})`;
+        ctx.fillRect(b.x * sx, b.y * sy, b.width * sx, b.height * sy);
 
-      ctx.strokeStyle = 'rgba(201,162,39,0.5)';
-      ctx.lineWidth = 1;
-      ctx.strokeRect(b.x * sx, b.y * sy, b.width * sx, b.height * sy);
-      ctx.restore();
+        ctx.strokeStyle = 'rgba(201,162,39,0.5)';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(b.x * sx, b.y * sy, b.width * sx, b.height * sy);
+        ctx.restore();
+      }
     }
 
-    // workers
-    for (const wkr of state.workers.values()) {
-      const x = wkr.position.x * sx;
-      const y = wkr.position.y * sy;
-      const col = wkr.status === 'blocked' ? 'rgba(139,26,26,0.95)'
-        : wkr.status === 'working' ? 'rgba(74,156,45,0.95)'
-        : wkr.status === 'hold' ? 'rgba(212,160,23,0.95)'
-        : 'rgba(232,220,196,0.85)';
-      ctx.fillStyle = col;
-      ctx.fillRect(x - 2, y - 2, 4, 4);
+    // workers (units)
+    if (this.showUnits) {
+      for (const wkr of state.workers.values()) {
+        const x = wkr.position.x * sx;
+        const y = wkr.position.y * sy;
+        const col = wkr.status === 'blocked' ? 'rgba(139,26,26,0.95)'
+          : wkr.status === 'working' ? 'rgba(74,156,45,0.95)'
+          : wkr.status === 'hold' ? 'rgba(212,160,23,0.95)'
+          : 'rgba(232,220,196,0.85)';
+        ctx.fillStyle = col;
+        ctx.fillRect(x - 2, y - 2, 4, 4);
+      }
     }
 
     // camera box

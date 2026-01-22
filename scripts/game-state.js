@@ -73,6 +73,9 @@ export class GameState {
 
   /** @param {GameEvent} evt */
   pushEvent(evt) {
+    if (!evt.timestamp) {
+      evt.timestamp = Date.now();
+    }
     this.events.unshift(evt);
     if (this.events.length > 250) this.events.length = 250;
     this.notify();

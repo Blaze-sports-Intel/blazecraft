@@ -65,6 +65,20 @@ function updateOpsFeed(event) {
   }
 }
 
+/**
+ * Clear ops feed and show initial demo message.
+ */
+function initOpsFeed() {
+  const feedEl = document.getElementById('opsFeed');
+  if (!feedEl) return;
+
+  feedEl.innerHTML = '';
+  const line = document.createElement('div');
+  line.className = 'wc3-ops-line';
+  line.textContent = 'Demo mode active. Monitoring BSI services.';
+  feedEl.appendChild(line);
+}
+
 async function init() {
   const state = new GameState();
 
@@ -77,6 +91,13 @@ async function init() {
   const bridge = new MockBridge(state);
   const commands = new CommandCenter(state, bridge);
   const ui = new UIPanels(state, renderer);
+
+  // Wire up focus command to move camera
+  commands.onFocus = (wx, wy) => {
+    renderer.camera.x = wx;
+    renderer.camera.y = wy;
+    clampCamera(renderer, mapCanvas);
+  };
 
   // Initialize OpsBridge for BSI service monitoring
   const opsBridge = new OpsBridge({
@@ -97,6 +118,9 @@ async function init() {
     }
   });
   await opsBridge.connect();
+
+  // Clear "Awaiting connection..." and show demo active message
+  initOpsFeed();
 
   // Subscribe to service state changes for resource updates
   serviceState.subscribe(() => {
@@ -249,12 +273,41 @@ async function init() {
   }, { passive: false });
 
   // minimap navigation
+  let pingMode = false;
+
   minimapCanvas.addEventListener('mousedown', (e) => {
     const wpt = renderer.minimapToWorld(e.clientX, e.clientY);
+    if (pingMode) {
+      renderer.addPing(wpt.x, wpt.y, 'spawn');
+      state.pushScoutLine(`Ping at (${Math.round(wpt.x)}, ${Math.round(wpt.y)})`);
+      return;
+    }
     renderer.camera.x = wpt.x;
     renderer.camera.y = wpt.y;
     clampCamera(renderer, mapCanvas);
   });
+
+  // minimap button handlers
+  for (const btn of Array.from(document.querySelectorAll('.wc3-minimap-btn'))) {
+    const action = btn.getAttribute('data-action');
+    btn.addEventListener('click', () => {
+      if (action === 'terrain') {
+        renderer.showTerrain = !renderer.showTerrain;
+        btn.classList.toggle('active', renderer.showTerrain);
+        state.pushScoutLine(renderer.showTerrain ? 'Terrain visible.' : 'Terrain hidden.');
+      }
+      if (action === 'units') {
+        renderer.showUnits = !renderer.showUnits;
+        btn.classList.toggle('active', renderer.showUnits);
+        state.pushScoutLine(renderer.showUnits ? 'Units visible.' : 'Units hidden.');
+      }
+      if (action === 'ping') {
+        pingMode = !pingMode;
+        btn.classList.toggle('active', pingMode);
+        state.pushScoutLine(pingMode ? 'Ping mode: click minimap to ping.' : 'Ping mode off.');
+      }
+    });
+  }
 
   // command card buttons (support both .cmd and .wc3-cmd)
   for (const b of Array.from(document.querySelectorAll('button[data-cmd]'))) {
@@ -274,6 +327,12 @@ async function init() {
     if (key === 'a') commands.exec('reassign');
     if (key === 'i') commands.exec('inspect');
     if (key === 'x') commands.exec('terminate');
+    if (key === 'l') commands.exec('logs');
+    if (key === 'f') commands.exec('files');
+    if (key === 'n') commands.exec('notes');
+    if (key === 'c') commands.exec('focus');
+    if (key === 'g') commands.exec('guard');
+    if (key === 'q') commands.exec('scan');
   });
 
   // render loop

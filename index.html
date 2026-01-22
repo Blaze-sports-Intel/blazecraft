@@ -63,9 +63,9 @@
       </div>
 
       <div class="topbar-right">
-        <div class="mode-selector">
-          <button id="modeRTS" class="mode-btn active" type="button">RTS</button>
-          <button id="modeOps" class="mode-btn" type="button">Ops</button>
+        <div class="mode-selector" role="group" aria-label="View mode">
+          <button id="modeRTS" class="mode-btn active" type="button" aria-label="RTS mode">RTS</button>
+          <button id="modeOps" class="mode-btn" type="button" aria-label="Operations mode">Ops</button>
         </div>
         <button id="toggleLog" class="btn btn-sm" type="button" aria-pressed="false">Log</button>
         <button id="toggleDemo" class="btn btn-accent btn-sm" type="button" aria-pressed="true" title="Toggle demo mode">Demo</button>
@@ -122,10 +122,10 @@
         <div class="wc3-minimap-frame">
           <canvas id="minimapCanvas" width="180" height="140" aria-label="Minimap"></canvas>
         </div>
-        <div class="wc3-minimap-btns">
-          <button class="wc3-minimap-btn" data-action="terrain">Ter</button>
-          <button class="wc3-minimap-btn" data-action="units">Unit</button>
-          <button class="wc3-minimap-btn" data-action="ping">Ping</button>
+        <div class="wc3-minimap-btns" role="group" aria-label="Minimap controls">
+          <button class="wc3-minimap-btn" data-action="terrain" aria-label="Toggle terrain view">Ter</button>
+          <button class="wc3-minimap-btn" data-action="units" aria-label="Toggle unit view">Unit</button>
+          <button class="wc3-minimap-btn" data-action="ping" aria-label="Ping location">Ping</button>
         </div>
       </div>
 
@@ -136,7 +136,10 @@
           <span id="opsStatus" class="tag tag-live">Live</span>
         </div>
         <div id="opsFeed" class="wc3-ops-feed">
-          <div class="wc3-ops-line muted">Awaiting connection...</div>
+          <div class="wc3-ops-loading" aria-label="Loading connection">
+            <div class="skeleton-line"></div>
+            <div class="skeleton-line short"></div>
+          </div>
         </div>
         <div class="wc3-ops-stats">
           <div class="wc3-ops-stat">
@@ -157,49 +160,55 @@
       <!-- Command Grid (4x3) -->
       <div class="wc3-command-panel">
         <div class="wc3-command-grid" role="group" aria-label="Commands">
-          <button class="wc3-cmd" data-cmd="stop" title="Stop (S)">
-            <span class="wc3-cmd-ico">⏹</span>
+          <button class="wc3-cmd" data-cmd="stop" title="Stop (S)" aria-label="Stop">
+            <span class="wc3-cmd-ico" aria-hidden="true">⏹</span>
             <span class="wc3-cmd-key">S</span>
           </button>
-          <button class="wc3-cmd" data-cmd="hold" title="Hold (H)">
-            <span class="wc3-cmd-ico">⏸</span>
+          <button class="wc3-cmd" data-cmd="hold" title="Hold (H)" aria-label="Hold">
+            <span class="wc3-cmd-ico" aria-hidden="true">⏸</span>
             <span class="wc3-cmd-key">H</span>
           </button>
-          <button class="wc3-cmd" data-cmd="resume" title="Resume (R)">
-            <span class="wc3-cmd-ico">▶</span>
+          <button class="wc3-cmd" data-cmd="resume" title="Resume (R)" aria-label="Resume">
+            <span class="wc3-cmd-ico" aria-hidden="true">▶</span>
             <span class="wc3-cmd-key">R</span>
           </button>
-          <button class="wc3-cmd" data-cmd="reassign" title="Reassign (A)">
-            <span class="wc3-cmd-ico">⇄</span>
+          <button class="wc3-cmd" data-cmd="reassign" title="Reassign (A)" aria-label="Reassign">
+            <span class="wc3-cmd-ico" aria-hidden="true">⇄</span>
             <span class="wc3-cmd-key">A</span>
           </button>
 
-          <button class="wc3-cmd" data-cmd="inspect" title="Inspect (I)">
-            <span class="wc3-cmd-ico">🔎</span>
+          <button class="wc3-cmd" data-cmd="inspect" title="Inspect (I)" aria-label="Inspect">
+            <span class="wc3-cmd-ico" aria-hidden="true">🔎</span>
             <span class="wc3-cmd-key">I</span>
           </button>
-          <button class="wc3-cmd" data-cmd="terminate" title="Terminate (X)">
-            <span class="wc3-cmd-ico">✖</span>
+          <button class="wc3-cmd" data-cmd="terminate" title="Terminate (X)" aria-label="Terminate">
+            <span class="wc3-cmd-ico" aria-hidden="true">✖</span>
             <span class="wc3-cmd-key">X</span>
           </button>
-          <button class="wc3-cmd wc3-cmd-muted" disabled title="Logs">
-            <span class="wc3-cmd-ico">📋</span>
+          <button class="wc3-cmd" data-cmd="logs" title="Logs (L)" aria-label="View Logs">
+            <span class="wc3-cmd-ico" aria-hidden="true">📋</span>
+            <span class="wc3-cmd-key">L</span>
           </button>
-          <button class="wc3-cmd wc3-cmd-muted" disabled title="Files">
-            <span class="wc3-cmd-ico">📁</span>
+          <button class="wc3-cmd" data-cmd="files" title="Files (F)" aria-label="View Files">
+            <span class="wc3-cmd-ico" aria-hidden="true">📁</span>
+            <span class="wc3-cmd-key">F</span>
           </button>
 
-          <button class="wc3-cmd wc3-cmd-muted" disabled title="Notes">
-            <span class="wc3-cmd-ico">💬</span>
+          <button class="wc3-cmd" data-cmd="notes" title="Notes (N)" aria-label="Notes">
+            <span class="wc3-cmd-ico" aria-hidden="true">💬</span>
+            <span class="wc3-cmd-key">N</span>
           </button>
-          <button class="wc3-cmd wc3-cmd-muted" disabled title="Focus">
-            <span class="wc3-cmd-ico">🎯</span>
+          <button class="wc3-cmd" data-cmd="focus" title="Focus (C)" aria-label="Focus">
+            <span class="wc3-cmd-ico" aria-hidden="true">🎯</span>
+            <span class="wc3-cmd-key">C</span>
           </button>
-          <button class="wc3-cmd wc3-cmd-muted" disabled title="Guard">
-            <span class="wc3-cmd-ico">🛡</span>
+          <button class="wc3-cmd" data-cmd="guard" title="Guard (G)" aria-label="Guard">
+            <span class="wc3-cmd-ico" aria-hidden="true">🛡</span>
+            <span class="wc3-cmd-key">G</span>
           </button>
-          <button class="wc3-cmd wc3-cmd-muted" disabled title="Scan">
-            <span class="wc3-cmd-ico">📡</span>
+          <button class="wc3-cmd" data-cmd="scan" title="Scan (Q)" aria-label="Scan">
+            <span class="wc3-cmd-ico" aria-hidden="true">📡</span>
+            <span class="wc3-cmd-key">Q</span>
           </button>
         </div>
       </div>
