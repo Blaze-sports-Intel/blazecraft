@@ -399,7 +399,11 @@ export default {
     }
 
     const url = new URL(request.url);
-    const path = url.pathname;
+    // Normalize path: strip /api/gamebridge prefix if present
+    const rawPath = url.pathname;
+    const path = rawPath.startsWith('/api/gamebridge')
+      ? rawPath.replace('/api/gamebridge', '') || '/'
+      : rawPath;
 
     // Route requests
     switch (path) {

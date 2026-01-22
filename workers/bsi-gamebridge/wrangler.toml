@@ -18,7 +18,7 @@ id = "2f3461bdcbaa4ba6a9fe1565cac088f5"
 # Ops deltas from bsi-ops-bridge worker (create with: wrangler kv:namespace create BSI_OPS_DELTAS)
 [[kv_namespaces]]
 binding = "BSI_OPS_DELTAS"
-id = "REPLACE_WITH_OPS_DELTAS_KV_ID"
+id = "14bab439d71745d39e4adb97a9a6b5bc"
 
 # Development settings
 [env.development]
@@ -31,7 +31,7 @@ binding = "BSI_GAMEBRIDGE_DELTAS"
 id = "2f3461bdcbaa4ba6a9fe1565cac088f5"
 [[env.development.kv_namespaces]]
 binding = "BSI_OPS_DELTAS"
-id = "REPLACE_WITH_OPS_DELTAS_KV_ID"
+id = "14bab439d71745d39e4adb97a9a6b5bc"
 
 # Production settings
 [env.production]
@@ -44,7 +44,7 @@ binding = "BSI_GAMEBRIDGE_DELTAS"
 id = "2f3461bdcbaa4ba6a9fe1565cac088f5"
 [[env.production.kv_namespaces]]
 binding = "BSI_OPS_DELTAS"
-id = "REPLACE_WITH_OPS_DELTAS_KV_ID"
+id = "14bab439d71745d39e4adb97a9a6b5bc"
 [env.production.triggers]
 crons = ["* * * * *"]
 
