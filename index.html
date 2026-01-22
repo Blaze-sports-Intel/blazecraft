@@ -13,26 +13,45 @@
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://blazecraft.app" />
 
-  <!-- Fonts: Inter for modern UI -->
+  <!-- Fonts: Inter for modern UI, Cinzel for WC3 display -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="styles/main.css" />
 </head>
 <body>
   <div id="app" aria-label="BlazeCraft">
 
-    <!-- Top Resource Bar -->
-    <header id="topbar" class="panel" role="banner">
+    <!-- WC3 Resource Bar (Top) -->
+    <header id="topbar" class="panel wc3-resource-bar" role="banner">
       <div class="topbar-left">
         <div class="brand">
           <a class="brand-mark" href="https://blazesportsintel.com/" target="_blank" rel="noopener" aria-label="Open Blaze Sports Intel">
-                        <img class="brand-logo" src="images/blazecraft-logo.svg" alt="BlazeCraft" width="44" height="48" />
+            <img class="brand-logo" src="images/blazecraft-logo.svg" alt="BlazeCraft" width="32" height="36" />
           </a>
-          <div class="brand-title">
-            <div class="brand-name">BlazeCraft</div>
-            <div class="brand-sub">RTS Agent Console • Blaze Sports Intel</div>
+        </div>
+
+        <!-- WC3 Resources: Gold, Lumber, Food, Upkeep -->
+        <div class="wc3-resources" role="group" aria-label="Resources">
+          <div class="wc3-res" title="Gold (API Requests/min)">
+            <span class="wc3-res-ico gold" aria-hidden="true"></span>
+            <span id="resGold" class="wc3-res-num">0</span>
+          </div>
+          <div class="wc3-res" title="Lumber (Cache Hit Rate %)">
+            <span class="wc3-res-ico lumber" aria-hidden="true"></span>
+            <span id="resLumber" class="wc3-res-num">0</span>
+            <span class="wc3-res-cap">%</span>
+          </div>
+          <div class="wc3-res" title="Food (Active Connections)">
+            <span class="wc3-res-ico food" aria-hidden="true"></span>
+            <span id="resFood" class="wc3-res-num">0</span>
+            <span class="wc3-res-cap">/</span>
+            <span id="resFoodMax" class="wc3-res-num">50</span>
+          </div>
+          <div class="wc3-res wc3-res-upkeep" title="Upkeep (Error Rate)">
+            <span class="wc3-res-label">Upkeep</span>
+            <span id="resUpkeep" class="wc3-res-num upkeep-low">Low</span>
           </div>
         </div>
 
@@ -43,118 +62,148 @@
         </button>
       </div>
 
-      <div class="resources" role="group" aria-label="Resources">
-        <div class="res" title="Tasks Completed">
-          <span class="res-ico" aria-hidden="true">✓</span>
-          <span id="resCompleted" class="res-num">0</span>
-        </div>
-        <div class="res" title="Files Modified">
-          <span class="res-ico" aria-hidden="true">⧉</span>
-          <span id="resFiles" class="res-num">0</span>
-        </div>
-        <div class="res" title="Active Workers">
-          <span class="res-ico" aria-hidden="true">⚡</span>
-          <span id="resWorkers" class="res-num">0</span>
-        </div>
-        <div class="res" title="Failed Tasks">
-          <span class="res-ico" aria-hidden="true">!</span>
-          <span id="resFailed" class="res-num">0</span>
-        </div>
-        <div class="res" title="Session Duration">
-          <span class="res-ico" aria-hidden="true">⏱</span>
-          <span id="resDuration" class="res-num">00:00</span>
-        </div>
-        <div class="res" title="Tokens Spent">
-          <span class="res-ico" aria-hidden="true">◎</span>
-          <span id="resTokens" class="res-num">0</span>
-        </div>
-      </div>
-
       <div class="topbar-right">
-        <button id="toggleLog" class="btn" type="button" aria-pressed="false">Log</button>
-        <button id="toggleDemo" class="btn btn-accent" type="button" aria-pressed="true" title="Toggle demo mode">Demo</button>
+        <div class="mode-selector">
+          <button id="modeRTS" class="mode-btn active" type="button">RTS</button>
+          <button id="modeOps" class="mode-btn" type="button">Ops</button>
+        </div>
+        <button id="toggleLog" class="btn btn-sm" type="button" aria-pressed="false">Log</button>
+        <button id="toggleDemo" class="btn btn-accent btn-sm" type="button" aria-pressed="true" title="Toggle demo mode">Demo</button>
       </div>
     </header>
 
-    <!-- Center Map -->
-    <main id="mapWrap" class="panel" role="main">
-      <canvas id="mapCanvas" width="1280" height="720" aria-label="Workspace Map" tabindex="0"></canvas>
-      <div id="mapHud" class="hud" aria-hidden="true">
-        <div class="hud-row">
-          <span class="kbd">Drag</span> select
-          <span class="dot">•</span>
-          <span class="kbd">RMB</span> assign
-          <span class="dot">•</span>
-          <span class="kbd">Wheel</span> zoom
-          <span class="dot">•</span>
-          <span class="kbd">MMB</span> pan
+    <!-- WC3 Game Area (Map + Event Log) -->
+    <div class="wc3-game-area">
+      <!-- Center Map -->
+      <main id="mapWrap" class="panel wc3-map-panel" role="main">
+        <canvas id="mapCanvas" width="1280" height="720" aria-label="Workspace Map" tabindex="0"></canvas>
+        <div id="mapHud" class="hud" aria-hidden="true">
+          <div class="hud-row">
+            <span class="kbd">Drag</span> select
+            <span class="dot">·</span>
+            <span class="kbd">RMB</span> assign
+            <span class="dot">·</span>
+            <span class="kbd">Wheel</span> zoom
+            <span class="dot">·</span>
+            <span class="kbd">MMB</span> pan
+          </div>
         </div>
-      </div>
-    </main>
+      </main>
 
-    <!-- Event Log (Right) -->
-    <aside id="logPanel" class="panel" aria-label="Event Log">
-      <div class="panel-title">
-        <span>Event Log</span>
-        <span id="logStatus" class="tag">Live</span>
-      </div>
-      <div id="logFeed" class="log-feed" role="log" aria-live="polite"></div>
-    </aside>
+      <!-- Event Log (Right Sidebar) -->
+      <aside id="logPanel" class="panel wc3-event-log" aria-label="Event Log">
+        <div class="panel-title">
+          <span>Event Log</span>
+          <span id="logStatus" class="tag tag-live">Live</span>
+        </div>
+        <div id="logFeed" class="log-feed" role="log" aria-live="polite"></div>
+      </aside>
+    </div>
 
-    <!-- Bottom Left: Portrait + Minimap -->
-    <section id="leftBottom" class="stack">
-      <div id="portraitPanel" class="panel">
-        <div class="panel-title">Agent</div>
-        <div class="portrait">
-          <div class="portrait-frame" aria-hidden="true">
-            <div id="portraitIcon" class="portrait-icon">?</div>
+    <!-- WC3 Bottom HUD -->
+    <section id="bottomHud" class="panel wc3-hud-bottom" aria-label="Bottom HUD">
+
+      <!-- Portrait Panel -->
+      <div class="wc3-portrait-panel">
+        <div class="wc3-portrait-frame" aria-hidden="true">
+          <div id="portraitIcon" class="wc3-portrait-icon">?</div>
+        </div>
+        <div class="wc3-portrait-info">
+          <div id="portraitName" class="wc3-portrait-name">No selection</div>
+          <div class="wc3-health-bar" aria-label="Health">
+            <div id="portraitHealth" class="wc3-health-fill" style="width: 100%"></div>
           </div>
-          <div class="portrait-meta">
-            <div id="portraitName" class="portrait-name">No selection</div>
-            <div id="portraitTask" class="portrait-task">Select a worker on the map</div>
-
-            <div class="meter" aria-label="Progress">
-              <div id="portraitMeter" class="meter-fill" style="width: 0%"></div>
-            </div>
-
-            <div class="kv">
-              <div class="kv-row"><span class="k">Status</span><span id="portraitStatus" class="v">—</span></div>
-              <div class="kv-row"><span class="k">Elapsed</span><span id="portraitElapsed" class="v">—</span></div>
-              <div class="kv-row"><span class="k">Tokens</span><span id="portraitTokens" class="v">—</span></div>
-            </div>
-          </div>
+          <div id="portraitStatus" class="wc3-portrait-status">Select a worker</div>
         </div>
       </div>
 
-      <div id="minimapPanel" class="panel">
-        <div class="panel-title">Minimap</div>
-        <canvas id="minimapCanvas" width="280" height="180" aria-label="Minimap"></canvas>
-      </div>
-    </section>
-
-    <!-- Bottom Right: Command Card -->
-    <section id="commandPanel" class="panel" aria-label="Command Card">
-      <div class="panel-title">Command Card</div>
-      <div class="cmd-grid" role="group" aria-label="Commands">
-        <button class="cmd" data-cmd="stop" title="Stop (S)"><span class="cmd-ico">⏹</span><span class="cmd-label">Stop</span></button>
-        <button class="cmd" data-cmd="hold" title="Hold (H)"><span class="cmd-ico">⏸</span><span class="cmd-label">Hold</span></button>
-        <button class="cmd" data-cmd="resume" title="Resume (R)"><span class="cmd-ico">▶</span><span class="cmd-label">Resume</span></button>
-        <button class="cmd" data-cmd="reassign" title="Reassign (A)"><span class="cmd-ico">⇄</span><span class="cmd-label">Assign</span></button>
-        <button class="cmd" data-cmd="inspect" title="Inspect (I)"><span class="cmd-ico">🔎</span><span class="cmd-label">Inspect</span></button>
-        <button class="cmd" data-cmd="terminate" title="Terminate (X)"><span class="cmd-ico">✖</span><span class="cmd-label">Terminate</span></button>
-
-        <button class="cmd cmd-muted" disabled><span class="cmd-ico">📋</span><span class="cmd-label">Logs</span></button>
-        <button class="cmd cmd-muted" disabled><span class="cmd-ico">📁</span><span class="cmd-label">Files</span></button>
-        <button class="cmd cmd-muted" disabled><span class="cmd-ico">💬</span><span class="cmd-label">Notes</span></button>
-
-        <button class="cmd cmd-muted" disabled><span class="cmd-ico">🎯</span><span class="cmd-label">Focus</span></button>
-        <button class="cmd cmd-muted" disabled><span class="cmd-ico">🛡</span><span class="cmd-label">Guard</span></button>
-        <button class="cmd cmd-muted" disabled><span class="cmd-ico">📡</span><span class="cmd-label">Scan</span></button>
+      <!-- Minimap Panel -->
+      <div class="wc3-minimap-panel">
+        <div class="wc3-minimap-frame">
+          <canvas id="minimapCanvas" width="180" height="140" aria-label="Minimap"></canvas>
+        </div>
+        <div class="wc3-minimap-btns">
+          <button class="wc3-minimap-btn" data-action="terrain">Ter</button>
+          <button class="wc3-minimap-btn" data-action="units">Unit</button>
+          <button class="wc3-minimap-btn" data-action="ping">Ping</button>
+        </div>
       </div>
 
-      <div class="cmd-hints" aria-hidden="true">
-        Hotkeys: <span class="kbd">S</span> stop, <span class="kbd">H</span> hold, <span class="kbd">R</span> resume, <span class="kbd">A</span> assign, <span class="kbd">I</span> inspect, <span class="kbd">X</span> terminate
+      <!-- Ops Feed Panel -->
+      <div id="opsPanel" class="wc3-ops-panel">
+        <div class="wc3-ops-header">
+          <span class="wc3-ops-title">Ops Feed</span>
+          <span id="opsStatus" class="tag tag-live">Live</span>
+        </div>
+        <div id="opsFeed" class="wc3-ops-feed">
+          <div class="wc3-ops-line muted">Awaiting connection...</div>
+        </div>
+        <div class="wc3-ops-stats">
+          <div class="wc3-ops-stat">
+            <span class="wc3-ops-stat-label">Latency</span>
+            <span id="opsLatency" class="wc3-ops-stat-val">--</span>
+          </div>
+          <div class="wc3-ops-stat">
+            <span class="wc3-ops-stat-label">Events</span>
+            <span id="opsEvents" class="wc3-ops-stat-val">0</span>
+          </div>
+          <div class="wc3-ops-stat">
+            <span class="wc3-ops-stat-label">Errors</span>
+            <span id="opsErrors" class="wc3-ops-stat-val">0</span>
+          </div>
+        </div>
       </div>
+
+      <!-- Command Grid (4x3) -->
+      <div class="wc3-command-panel">
+        <div class="wc3-command-grid" role="group" aria-label="Commands">
+          <button class="wc3-cmd" data-cmd="stop" title="Stop (S)">
+            <span class="wc3-cmd-ico">⏹</span>
+            <span class="wc3-cmd-key">S</span>
+          </button>
+          <button class="wc3-cmd" data-cmd="hold" title="Hold (H)">
+            <span class="wc3-cmd-ico">⏸</span>
+            <span class="wc3-cmd-key">H</span>
+          </button>
+          <button class="wc3-cmd" data-cmd="resume" title="Resume (R)">
+            <span class="wc3-cmd-ico">▶</span>
+            <span class="wc3-cmd-key">R</span>
+          </button>
+          <button class="wc3-cmd" data-cmd="reassign" title="Reassign (A)">
+            <span class="wc3-cmd-ico">⇄</span>
+            <span class="wc3-cmd-key">A</span>
+          </button>
+
+          <button class="wc3-cmd" data-cmd="inspect" title="Inspect (I)">
+            <span class="wc3-cmd-ico">🔎</span>
+            <span class="wc3-cmd-key">I</span>
+          </button>
+          <button class="wc3-cmd" data-cmd="terminate" title="Terminate (X)">
+            <span class="wc3-cmd-ico">✖</span>
+            <span class="wc3-cmd-key">X</span>
+          </button>
+          <button class="wc3-cmd wc3-cmd-muted" disabled title="Logs">
+            <span class="wc3-cmd-ico">📋</span>
+          </button>
+          <button class="wc3-cmd wc3-cmd-muted" disabled title="Files">
+            <span class="wc3-cmd-ico">📁</span>
+          </button>
+
+          <button class="wc3-cmd wc3-cmd-muted" disabled title="Notes">
+            <span class="wc3-cmd-ico">💬</span>
+          </button>
+          <button class="wc3-cmd wc3-cmd-muted" disabled title="Focus">
+            <span class="wc3-cmd-ico">🎯</span>
+          </button>
+          <button class="wc3-cmd wc3-cmd-muted" disabled title="Guard">
+            <span class="wc3-cmd-ico">🛡</span>
+          </button>
+          <button class="wc3-cmd wc3-cmd-muted" disabled title="Scan">
+            <span class="wc3-cmd-ico">📡</span>
+          </button>
+        </div>
+      </div>
+
     </section>
 
   </div>

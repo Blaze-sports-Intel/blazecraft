@@ -4,6 +4,66 @@ import { UIPanels } from './ui-panels.js';
 import { MockBridge } from './mock-data.js';
 import { CommandCenter } from './commands.js';
 import { clamp } from './map.js';
+import { OpsBridge } from '../src/ops-bridge.js';
+import { serviceState } from '../src/service-map.js';
+
+/** @type {number} */
+let opsEventCount = 0;
+/** @type {number} */
+let opsErrorCount = 0;
+
+/**
+ * Update WC3-style resource UI from metrics.
+ * @param {{ gold: number, lumber: number, food: number, foodMax: number, upkeep: string }} resources
+ */
+function updateResourceUI(resources) {
+  const goldEl = document.getElementById('resGold');
+  const lumberEl = document.getElementById('resLumber');
+  const foodEl = document.getElementById('resFood');
+  const foodMaxEl = document.getElementById('resFoodMax');
+  const upkeepEl = document.getElementById('resUpkeep');
+
+  if (goldEl) goldEl.textContent = String(Math.round(resources.gold));
+  if (lumberEl) lumberEl.textContent = String(Math.round(resources.lumber));
+  if (foodEl) foodEl.textContent = String(resources.food);
+  if (foodMaxEl) foodMaxEl.textContent = String(resources.foodMax);
+
+  if (upkeepEl) {
+    upkeepEl.textContent = resources.upkeep.charAt(0).toUpperCase() + resources.upkeep.slice(1);
+    upkeepEl.className = 'wc3-res-num upkeep-' + resources.upkeep;
+  }
+}
+
+/**
+ * Update ops feed panel with new event.
+ * @param {object} event
+ */
+function updateOpsFeed(event) {
+  const feedEl = document.getElementById('opsFeed');
+  const eventsEl = document.getElementById('opsEvents');
+  const errorsEl = document.getElementById('opsErrors');
+
+  if (!feedEl) return;
+
+  opsEventCount++;
+  if (eventsEl) eventsEl.textContent = String(opsEventCount);
+
+  if (event.severity === 'error' || event.severity === 'critical') {
+    opsErrorCount++;
+    if (errorsEl) errorsEl.textContent = String(opsErrorCount);
+  }
+
+  // Add new line to feed (keep last 5)
+  const line = document.createElement('div');
+  line.className = 'wc3-ops-line' + (event.category === 'general' ? ' muted' : '');
+  line.textContent = event.details || 'Event';
+  feedEl.appendChild(line);
+
+  // Keep only last 5 lines
+  while (feedEl.children.length > 5) {
+    feedEl.removeChild(feedEl.firstChild);
+  }
+}
 
 async function init() {
   const state = new GameState();
@@ -17,6 +77,34 @@ async function init() {
   const bridge = new MockBridge(state);
   const commands = new CommandCenter(state, bridge);
   const ui = new UIPanels(state, renderer);
+
+  // Initialize OpsBridge for BSI service monitoring
+  const opsBridge = new OpsBridge({
+    demo: true,
+    onEvent: (event) => {
+      state.pushEvent(event);
+      updateOpsFeed(event);
+    },
+    onMetrics: (metrics) => {
+      updateResourceUI(metrics);
+    },
+    onConnection: (connected) => {
+      const statusEl = document.getElementById('opsStatus');
+      if (statusEl) {
+        statusEl.textContent = connected ? 'Live' : 'Offline';
+        statusEl.className = connected ? 'tag tag-live' : 'tag';
+      }
+    }
+  });
+  await opsBridge.connect();
+
+  // Subscribe to service state changes for resource updates
+  serviceState.subscribe(() => {
+    updateResourceUI(serviceState.getResources());
+  });
+
+  // Initial resource update
+  updateResourceUI(serviceState.getResources());
 
   // keep UI in sync
   state.subscribe(() => ui.render());
@@ -36,9 +124,11 @@ async function init() {
     toggleDemo.setAttribute('aria-pressed', String(demoOn));
     if (demoOn) {
       await bridge.connect();
+      opsBridge.setDemoMode(true);
       state.pushScoutLine('Demo mode resumed. Workers rallying.');
     } else {
       bridge.disconnect();
+      opsBridge.setDemoMode(false);
       state.setSelected([]);
       for (const wid of Array.from(state.workers.keys())) state.removeWorker(wid);
       state.events = [];
@@ -166,8 +256,8 @@ async function init() {
     clampCamera(renderer, mapCanvas);
   });
 
-  // command card buttons
-  for (const b of Array.from(document.querySelectorAll('button.cmd[data-cmd]'))) {
+  // command card buttons (support both .cmd and .wc3-cmd)
+  for (const b of Array.from(document.querySelectorAll('button[data-cmd]'))) {
     b.addEventListener('click', () => {
       const cmd = /** @type {any} */ (b.getAttribute('data-cmd'));
       commands.exec(cmd);

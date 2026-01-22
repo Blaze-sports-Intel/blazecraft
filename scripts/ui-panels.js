@@ -21,6 +21,7 @@ export class UIPanels {
     this.state = state;
     this.renderer = renderer;
 
+    // Legacy resource elements (may not exist in WC3 layout)
     this.$resCompleted = el('resCompleted');
     this.$resFiles = el('resFiles');
     this.$resWorkers = el('resWorkers');
@@ -31,10 +32,11 @@ export class UIPanels {
     this.$idleAlert = el('idleAlert');
     this.$idleAlertCount = el('idleAlertCount');
 
+    // Portrait elements (WC3 layout uses different IDs)
     this.$portraitIcon = el('portraitIcon');
     this.$portraitName = el('portraitName');
     this.$portraitTask = el('portraitTask');
-    this.$portraitMeter = el('portraitMeter');
+    this.$portraitMeter = el('portraitMeter') || el('portraitHealth'); // WC3 uses portraitHealth
     this.$portraitStatus = el('portraitStatus');
     this.$portraitElapsed = el('portraitElapsed');
     this.$portraitTokens = el('portraitTokens');
@@ -47,7 +49,9 @@ export class UIPanels {
     this._idleIndex = 0;
     this._lastLogRenderKey = '';
 
-    this.$idleAlert.addEventListener('click', () => this.cycleIdle());
+    if (this.$idleAlert) {
+      this.$idleAlert.addEventListener('click', () => this.cycleIdle());
+    }
   }
 
   cycleIdle() {
@@ -63,62 +67,76 @@ export class UIPanels {
   render() {
     const s = this.state;
 
-    // resources
-    this.$resCompleted.textContent = String(s.stats.completed);
-    this.$resFiles.textContent = String(s.stats.files);
-    this.$resWorkers.textContent = String(s.workers.size);
-    this.$resFailed.textContent = String(s.stats.failed);
-    this.$resTokens.textContent = String(s.stats.tokens);
-    this.$resDuration.textContent = formatDuration(s.getSessionDurationMs());
+    // resources (only if elements exist - WC3 layout uses different resource system)
+    if (this.$resCompleted) this.$resCompleted.textContent = String(s.stats.completed);
+    if (this.$resFiles) this.$resFiles.textContent = String(s.stats.files);
+    if (this.$resWorkers) this.$resWorkers.textContent = String(s.workers.size);
+    if (this.$resFailed) this.$resFailed.textContent = String(s.stats.failed);
+    if (this.$resTokens) this.$resTokens.textContent = String(s.stats.tokens);
+    if (this.$resDuration) this.$resDuration.textContent = formatDuration(s.getSessionDurationMs());
 
     // idle alert
     const idleOrBlocked = s.getIdleOrBlocked();
-    if (idleOrBlocked.length) {
-      this.$idleAlert.hidden = false;
-      this.$idleAlertCount.textContent = String(idleOrBlocked.length);
-      const hasBlocked = idleOrBlocked.some(w => w.status === 'blocked');
-      this.$idleAlert.classList.toggle('has-blocked', hasBlocked);
-    } else {
-      this.$idleAlert.hidden = true;
+    if (this.$idleAlert) {
+      if (idleOrBlocked.length) {
+        this.$idleAlert.hidden = false;
+        if (this.$idleAlertCount) this.$idleAlertCount.textContent = String(idleOrBlocked.length);
+        const hasBlocked = idleOrBlocked.some(w => w.status === 'blocked');
+        this.$idleAlert.classList.toggle('has-blocked', hasBlocked);
+      } else {
+        this.$idleAlert.hidden = true;
+      }
     }
 
     // portrait
     const selected = s.getSelectedWorkers();
     if (selected.length === 1) {
       const w = selected[0];
-      this.$portraitIcon.textContent = w.name.slice(0, 1).toUpperCase();
-      this.$portraitName.textContent = w.name;
-      this.$portraitTask.textContent = w.currentTask || 'No current task.';
-      this.$portraitStatus.textContent = w.status;
-      this.$portraitElapsed.textContent = formatDuration(Date.now() - w.spawnedAt);
-      this.$portraitTokens.textContent = String(w.tokensUsed);
+      if (this.$portraitIcon) this.$portraitIcon.textContent = w.name.slice(0, 1).toUpperCase();
+      if (this.$portraitName) this.$portraitName.textContent = w.name;
+      if (this.$portraitTask) this.$portraitTask.textContent = w.currentTask || 'No current task.';
+      if (this.$portraitStatus) this.$portraitStatus.textContent = w.status;
+      if (this.$portraitElapsed) this.$portraitElapsed.textContent = formatDuration(Date.now() - w.spawnedAt);
+      if (this.$portraitTokens) this.$portraitTokens.textContent = String(w.tokensUsed);
       const pct = (w.progress >= 0 && w.progress <= 100) ? w.progress : 0;
-      this.$portraitMeter.style.width = `${pct}%`;
-      this.$portraitMeter.className = `meter-fill status-${w.status}`;
+      if (this.$portraitMeter) {
+        this.$portraitMeter.style.width = `${pct}%`;
+        // WC3 layout uses wc3-health-fill class
+        const isWc3 = this.$portraitMeter.classList.contains('wc3-health-fill');
+        this.$portraitMeter.className = isWc3 ? 'wc3-health-fill' : `meter-fill status-${w.status}`;
+      }
     } else if (selected.length > 1) {
-      this.$portraitIcon.textContent = String(selected.length);
-      this.$portraitName.textContent = `${selected.length} units selected`;
-      this.$portraitTask.textContent = 'Multiple tasks.';
-      this.$portraitStatus.textContent = '-';
-      this.$portraitElapsed.textContent = '-';
-      this.$portraitTokens.textContent = '-';
-      this.$portraitMeter.style.width = '0%';
-      this.$portraitMeter.className = 'meter-fill';
+      if (this.$portraitIcon) this.$portraitIcon.textContent = String(selected.length);
+      if (this.$portraitName) this.$portraitName.textContent = `${selected.length} units selected`;
+      if (this.$portraitTask) this.$portraitTask.textContent = 'Multiple tasks.';
+      if (this.$portraitStatus) this.$portraitStatus.textContent = '-';
+      if (this.$portraitElapsed) this.$portraitElapsed.textContent = '-';
+      if (this.$portraitTokens) this.$portraitTokens.textContent = '-';
+      if (this.$portraitMeter) {
+        this.$portraitMeter.style.width = '0%';
+        const isWc3 = this.$portraitMeter.classList.contains('wc3-health-fill');
+        this.$portraitMeter.className = isWc3 ? 'wc3-health-fill' : 'meter-fill';
+      }
     } else {
-      this.$portraitIcon.textContent = '?';
-      this.$portraitName.textContent = 'No selection';
-      this.$portraitTask.textContent = 'Select a worker on the map.';
-      this.$portraitStatus.textContent = '-';
-      this.$portraitElapsed.textContent = '-';
-      this.$portraitTokens.textContent = '-';
-      this.$portraitMeter.style.width = '0%';
-      this.$portraitMeter.className = 'meter-fill';
+      if (this.$portraitIcon) this.$portraitIcon.textContent = '?';
+      if (this.$portraitName) this.$portraitName.textContent = 'No selection';
+      if (this.$portraitTask) this.$portraitTask.textContent = 'Select a worker on the map.';
+      if (this.$portraitStatus) this.$portraitStatus.textContent = 'Select a worker';
+      if (this.$portraitElapsed) this.$portraitElapsed.textContent = '-';
+      if (this.$portraitTokens) this.$portraitTokens.textContent = '-';
+      if (this.$portraitMeter) {
+        this.$portraitMeter.style.width = '100%';
+        const isWc3 = this.$portraitMeter.classList.contains('wc3-health-fill');
+        this.$portraitMeter.className = isWc3 ? 'wc3-health-fill' : 'meter-fill';
+      }
     }
 
-    // scout report
-    this.$scoutReport.innerHTML = s.scout
-      .map((line, idx) => `<div class="scout-line${idx === 0 ? '' : ' muted'}">${escapeHtml(line)}</div>`)
-      .join('');
+    // scout report (may not exist in WC3 layout)
+    if (this.$scoutReport) {
+      this.$scoutReport.innerHTML = s.scout
+        .map((line, idx) => `<div class="scout-line${idx === 0 ? '' : ' muted'}">${escapeHtml(line)}</div>`)
+        .join('');
+    }
 
     // log
     const key = `${s.events.length}:${s.selected.size}:${s.workers.size}:${s.stats.completed}:${s.stats.failed}`;
