@@ -50,7 +50,7 @@
   --wc3-stone: #2A2A2F;
   --wc3-stone-dark: var(--bsi-charcoal);
   --wc3-stone-light: #3A3A42;
-  --font-display: 'Archivo Black', 'Cinzel', Georgia, serif;
+  --font-display: 'Cinzel', 'Archivo Black', Georgia, serif;
 }
 
 * { box-sizing: border-box; }

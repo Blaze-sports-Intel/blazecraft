@@ -400,3 +400,10 @@ function clampCamera(renderer, mapCanvas) {
 }
 
 init();
+
+// BSI Film Grain toggle (per CLAUDE.md design system)
+window.BSIGrain = {
+  disable: () => document.body.classList.add('bsi-grain-disabled'),
+  enable: () => document.body.classList.remove('bsi-grain-disabled'),
+  toggle: () => document.body.classList.toggle('bsi-grain-disabled'),
+};
