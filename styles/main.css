@@ -629,7 +629,7 @@ html, body {
 .wc3-hud-bottom {
   grid-row: 3;
   display: grid;
-  grid-template-columns: 180px 200px 1fr 240px;
+  grid-template-columns: minmax(140px, 180px) minmax(160px, 200px) 1fr minmax(180px, 240px);
   gap: 0;
   border-radius: 0;
   border-width: 3px 0 0 0;
@@ -1047,6 +1047,28 @@ body.log-collapsed .wc3-game-area {
   grid-template-columns: 1fr;
 }
 
+/* Mode switching: OPS view emphasizes ops panel, dims game area */
+body[data-mode="ops"] .wc3-game-area {
+  opacity: 0.4;
+  pointer-events: none;
+}
+
+body[data-mode="ops"] .wc3-ops-panel {
+  background: linear-gradient(180deg, rgba(232,108,44,0.08) 0%, rgba(0,0,0,0.30) 100%);
+  border-color: var(--wc3-gold);
+}
+
+body[data-mode="ops"] .wc3-hud-bottom {
+  grid-template-columns: 140px 1fr 1fr 200px;
+}
+
+/* Mode switching: RTS view (default) */
+body[data-mode="rts"] .wc3-game-area,
+body:not([data-mode]) .wc3-game-area {
+  opacity: 1;
+  pointer-events: auto;
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .idle-alert { animation: none; }
@@ -1074,12 +1096,35 @@ body.log-collapsed .wc3-game-area {
 /* Responsive - Small screens */
 @media (max-width: 1180px) {
   #app {
-    grid-template-rows: 48px 1fr 240px;
+    grid-template-rows: 48px 1fr 200px;
+  }
+
+  .wc3-game-area {
+    grid-template-columns: 1fr 280px;
+    transition: grid-template-columns 0.3s ease;
+  }
+
+  .wc3-event-log {
+    border-width: 0 0 0 2px;
+  }
+
+  .wc3-hud-bottom {
+    grid-template-columns: 140px 160px 1fr 180px;
+  }
+
+  .wc3-ops-stats {
+    display: none;
+  }
+}
+
+/* Responsive - Intermediate screens */
+@media (max-width: 1024px) {
+  #app {
+    grid-template-rows: 48px 1fr 160px;
   }
 
   .wc3-game-area {
     grid-template-columns: 1fr 0;
-    transition: grid-template-columns 0.3s ease;
   }
 
   .wc3-event-log {
@@ -1092,11 +1137,26 @@ body.log-collapsed .wc3-game-area {
   }
 
   .wc3-hud-bottom {
-    grid-template-columns: 140px 160px 1fr 180px;
+    grid-template-columns: 120px 140px 1fr 160px;
   }
 
-  .wc3-ops-stats {
-    display: none;
+  .wc3-portrait-frame {
+    width: 52px;
+    height: 52px;
+  }
+
+  .wc3-portrait-icon {
+    width: 38px;
+    height: 38px;
+    font-size: 18px;
+  }
+
+  .wc3-command-grid {
+    gap: 2px;
+  }
+
+  .wc3-cmd-ico {
+    font-size: 16px;
   }
 }
 

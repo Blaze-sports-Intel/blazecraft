@@ -161,6 +161,20 @@ async function init() {
     }
   });
 
+  // mode switching (RTS/Ops)
+  const modeRTS = document.getElementById('modeRTS');
+  const modeOps = document.getElementById('modeOps');
+
+  function setMode(mode) {
+    document.body.dataset.mode = mode;
+    modeRTS?.classList.toggle('active', mode === 'rts');
+    modeOps?.classList.toggle('active', mode === 'ops');
+    state.pushScoutLine(mode === 'ops' ? 'Operations view active.' : 'RTS view active.');
+  }
+
+  modeRTS?.addEventListener('click', () => setMode('rts'));
+  modeOps?.addEventListener('click', () => setMode('ops'));
+
   // start demo
   await bridge.connect();
 

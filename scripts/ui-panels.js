@@ -156,10 +156,11 @@ export class UIPanels {
     this.$logFeed.innerHTML = items.map(evt => {
       const icon = ICONS[evt.type] || '•';
       const t = new Date(evt.timestamp);
-      const hh = String(t.getHours()).padStart(2,'0');
-      const mm = String(t.getMinutes()).padStart(2,'0');
-      const ss = String(t.getSeconds()).padStart(2,'0');
-      const stamp = `${hh}:${mm}:${ss}`;
+      const isValidDate = !isNaN(t.getTime());
+      const hh = isValidDate ? String(t.getHours()).padStart(2,'0') : '00';
+      const mm = isValidDate ? String(t.getMinutes()).padStart(2,'0') : '00';
+      const ss = isValidDate ? String(t.getSeconds()).padStart(2,'0') : '00';
+      const stamp = isValidDate ? `${hh}:${mm}:${ss}` : 'Now';
       const cls = evt.type === 'error' ? 'err' : evt.type === 'task_complete' ? 'ok' : evt.type === 'spawn' ? 'spawn' : '';
 
       return `<button class="log-item ${cls}" data-worker="${evt.workerId}">
