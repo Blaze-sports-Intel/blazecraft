@@ -13,14 +13,28 @@
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://blazecraft.app" />
 
-  <!-- Fonts: Inter for modern UI, Cinzel for WC3 display -->
+  <!-- Fonts: Plus Jakarta Sans (body), Archivo Black (display), JetBrains Mono, Cinzel (WC3) -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@700&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Cinzel:wght@700&family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="styles/main.css" />
 </head>
 <body>
+  <!-- BSI Film Grain Filter (3.5% opacity, respects prefers-reduced-motion) -->
+  <svg class="bsi-grain-defs" aria-hidden="true" style="position:absolute;width:0;height:0;pointer-events:none;">
+    <defs>
+      <filter id="bsi-grain-filter" x="0%" y="0%" width="100%" height="100%">
+        <feTurbulence type="fractalNoise" baseFrequency="0.75" numOctaves="4" stitchTiles="stitch" result="noise"/>
+        <feColorMatrix type="saturate" values="0" result="mono"/>
+        <feBlend in="SourceGraphic" in2="mono" mode="multiply"/>
+      </filter>
+    </defs>
+  </svg>
+
+  <!-- Film Grain Overlay (can toggle via BSIGrain.disable()) -->
+  <div id="bsi-grain-overlay" class="bsi-grain-overlay" aria-hidden="true"></div>
+
   <div id="app" aria-label="BlazeCraft">
 
     <!-- WC3 Resource Bar (Top) -->
