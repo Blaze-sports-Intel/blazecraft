@@ -444,12 +444,16 @@ html, body {
   display: grid;
   grid-template-columns: 1fr 320px;
   gap: 3px;
+  min-height: 0; /* Prevent grid blowout from content */
+  overflow: hidden;
 }
 
 .wc3-map-panel {
   border-radius: 0;
   border-width: 0;
   position: relative;
+  min-height: 0; /* Allow shrinking in grid */
+  overflow: hidden;
 }
 
 /* Map */
@@ -508,6 +512,8 @@ html, body {
   border-width: 0 0 0 3px;
   display: flex;
   flex-direction: column;
+  min-height: 0; /* Allow shrinking in grid */
+  overflow: hidden;
 }
 
 #logPanel {
@@ -582,7 +588,8 @@ html, body {
 .log-feed {
   padding: 12px;
   overflow: auto;
-  height: 100%;
+  flex: 1;
+  min-height: 0; /* Allow scrolling instead of expanding */
 }
 
 .log-item {
