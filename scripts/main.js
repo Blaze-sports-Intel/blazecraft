@@ -6,6 +6,7 @@ import { CommandCenter } from './commands.js';
 import { clamp } from './map.js';
 import { OpsBridge } from '../src/ops-bridge.js';
 import { serviceState } from '../src/service-map.js';
+import { AlertSystem, ServiceAlerts } from './alerts.js';
 
 /** @type {number} */
 let opsEventCount = 0;
@@ -88,6 +89,17 @@ async function init() {
   const renderer = new Renderer(mapCanvas, minimapCanvas);
   await renderer.loadTextures();
 
+  // Initialize alert system
+  const appContainer = document.getElementById('app');
+  const alertSystem = new AlertSystem({
+    container: appContainer,
+    renderer: renderer,
+    enableSound: false, // Can be toggled by user preference
+  });
+
+  // Expose alert system for debugging/demo
+  window.alerts = alertSystem;
+
   const bridge = new MockBridge(state);
   const commands = new CommandCenter(state, bridge);
   const ui = new UIPanels(state, renderer);
@@ -105,9 +117,32 @@ async function init() {
     onEvent: (event) => {
       state.pushEvent(event);
       updateOpsFeed(event);
+
+      // Trigger alerts for critical events
+      if (event.severity === 'critical') {
+        const worker = state.workers.get(event.workerId);
+        const location = worker ? { x: worker.position.x, y: worker.position.y } : null;
+        alertSystem.critical(
+          event.title || 'Critical Event',
+          event.details || 'A critical issue has been detected.',
+          { location }
+        );
+      } else if (event.severity === 'error') {
+        const worker = state.workers.get(event.workerId);
+        const location = worker ? { x: worker.position.x, y: worker.position.y } : null;
+        ServiceAlerts.workerError(alertSystem, event.source || 'Unknown', event.details || 'Error occurred', location);
+      }
     },
     onMetrics: (metrics) => {
       updateResourceUI(metrics);
+
+      // High error rate alert (upkeep = 'high' means trouble)
+      if (metrics.upkeep === 'high') {
+        const errorRate = 1 - (metrics.lumber / 100); // lumber is cache hit rate
+        if (errorRate > 0.25) {
+          ServiceAlerts.highErrorRate(alertSystem, errorRate);
+        }
+      }
     },
     onConnection: (connected) => {
       const statusEl = document.getElementById('opsStatus');
@@ -115,9 +150,17 @@ async function init() {
         statusEl.textContent = connected ? 'Live' : 'Offline';
         statusEl.className = connected ? 'tag tag-live' : 'tag';
       }
+
+      // Connection status alerts
+      if (!connected) {
+        alertSystem.warning('Connection Lost', 'Attempting to reconnect to BSI services...');
+      }
     }
   });
   await opsBridge.connect();
+
+  // Welcome alert on demo start
+  alertSystem.info('BlazeCraft Initialized', 'Demo mode active. Monitoring BSI services in real-time.', { duration: 4000 });
 
   // Clear "Awaiting connection..." and show demo active message
   initOpsFeed();

@@ -236,6 +236,9 @@ export class Renderer {
     const ctx = this.ctx;
     const b = region.bounds;
 
+    // Building level (1-3) based on region type or can be set externally
+    const level = region.level || (region.type === 'townhall' ? 3 : region.type === 'goldmine' ? 2 : 1);
+
     const palette = {
       townhall: { fill: 'rgba(40,35,28,0.75)', edge: 'rgba(201,162,39,0.9)' },
       goldmine: { fill: 'rgba(55,47,30,0.72)', edge: 'rgba(201,162,39,0.85)' },
@@ -254,21 +257,79 @@ export class Renderer {
     ctx.fillStyle = palette.fill;
     ctx.fillRect(b.x, b.y, b.width, b.height);
 
-    // texture
+    // texture - Level 1: Base stone texture
     if (this.texStone) {
       const pat = ctx.createPattern(this.texStone, 'repeat');
       if (pat) {
-        ctx.globalAlpha = 0.08;
+        ctx.globalAlpha = 0.08 + (level * 0.02); // More visible at higher levels
         ctx.fillStyle = pat;
         ctx.fillRect(b.x, b.y, b.width, b.height);
         ctx.globalAlpha = 1;
       }
     }
 
-    // bevel edge
-    ctx.strokeStyle = palette.edge;
-    ctx.lineWidth = 2;
-    ctx.strokeRect(b.x, b.y, b.width, b.height);
+    // Level 2+: Gold corner flourishes
+    if (level >= 2) {
+      const cornerSize = 12;
+      ctx.strokeStyle = 'rgba(201,162,39,0.9)';
+      ctx.lineWidth = 3;
+
+      // Top-left corner
+      ctx.beginPath();
+      ctx.moveTo(b.x + cornerSize, b.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.lineTo(b.x, b.y + cornerSize);
+      ctx.stroke();
+
+      // Top-right corner
+      ctx.beginPath();
+      ctx.moveTo(b.x + b.width - cornerSize, b.y);
+      ctx.lineTo(b.x + b.width, b.y);
+      ctx.lineTo(b.x + b.width, b.y + cornerSize);
+      ctx.stroke();
+
+      // Bottom-left corner
+      ctx.beginPath();
+      ctx.moveTo(b.x, b.y + b.height - cornerSize);
+      ctx.lineTo(b.x, b.y + b.height);
+      ctx.lineTo(b.x + cornerSize, b.y + b.height);
+      ctx.stroke();
+
+      // Bottom-right corner
+      ctx.beginPath();
+      ctx.moveTo(b.x + b.width - cornerSize, b.y + b.height);
+      ctx.lineTo(b.x + b.width, b.y + b.height);
+      ctx.lineTo(b.x + b.width, b.y + b.height - cornerSize);
+      ctx.stroke();
+    }
+
+    // Level 3: Full gold border with inner glow
+    if (level >= 3) {
+      // Inner glow
+      const glowGrad = ctx.createLinearGradient(b.x, b.y, b.x + b.width, b.y + b.height);
+      glowGrad.addColorStop(0, 'rgba(201,162,39,0.15)');
+      glowGrad.addColorStop(0.5, 'rgba(201,162,39,0.25)');
+      glowGrad.addColorStop(1, 'rgba(201,162,39,0.15)');
+      ctx.fillStyle = glowGrad;
+      ctx.fillRect(b.x + 4, b.y + 4, b.width - 8, b.height - 8);
+
+      // Full gold border
+      ctx.strokeStyle = 'rgba(201,162,39,0.95)';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(b.x, b.y, b.width, b.height);
+
+      // Pulsing glow effect
+      const pulse = Math.sin(now / 1000) * 0.3 + 0.7;
+      ctx.shadowColor = `rgba(201,162,39,${pulse * 0.5})`;
+      ctx.shadowBlur = 12;
+      ctx.strokeRect(b.x, b.y, b.width, b.height);
+      ctx.shadowBlur = 0;
+    } else {
+      // Standard bevel edge for Level 1-2
+      ctx.strokeStyle = palette.edge;
+      ctx.lineWidth = 2;
+      ctx.strokeRect(b.x, b.y, b.width, b.height);
+    }
 
     // inner edge
     ctx.strokeStyle = 'rgba(0,0,0,0.5)';
@@ -360,24 +421,89 @@ export class Renderer {
       ctx.stroke();
     }
 
-    // blocked distress
+    // hold: Pause icon pulsing
+    if (worker.status === 'hold') {
+      const pulse = Math.sin(now / 300) * 0.3 + 0.7;
+      ctx.save();
+      ctx.globalAlpha = pulse;
+      ctx.fillStyle = 'rgba(212,160,23,0.95)';
+
+      // Pause bars
+      const barWidth = 3;
+      const barHeight = 10;
+      const gap = 4;
+      ctx.fillRect(x - gap / 2 - barWidth, y + bob - barHeight / 2 - 14, barWidth, barHeight);
+      ctx.fillRect(x + gap / 2, y + bob - barHeight / 2 - 14, barWidth, barHeight);
+
+      // Glow effect
+      ctx.shadowColor = 'rgba(212,160,23,0.6)';
+      ctx.shadowBlur = 8;
+      ctx.fillRect(x - gap / 2 - barWidth, y + bob - barHeight / 2 - 14, barWidth, barHeight);
+      ctx.fillRect(x + gap / 2, y + bob - barHeight / 2 - 14, barWidth, barHeight);
+      ctx.restore();
+    }
+
+    // blocked: Exclamation with shake
     if (worker.status === 'blocked') {
+      const shake = Math.sin(now / 50) * 2; // Fast shake
+
+      ctx.save();
+      ctx.translate(shake, 0);
+
+      // Distress ring
       ctx.strokeStyle = 'rgba(139,26,26,0.8)';
       ctx.lineWidth = 2;
       ctx.beginPath();
       ctx.arc(x, y + bob, 12, 0, Math.PI * 2);
       ctx.stroke();
+
+      // Exclamation mark
+      ctx.fillStyle = 'rgba(139,26,26,0.95)';
+      ctx.font = 'bold 14px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.fillText('!', x, y + bob - 16);
+
+      ctx.restore();
     }
 
-    // complete check
+    // complete: Checkmark that fades
     if (worker.status === 'complete') {
-      ctx.strokeStyle = 'rgba(232,220,196,0.95)';
-      ctx.lineWidth = 2.5;
+      // Calculate fade based on when status changed (use updatedAt if available)
+      const completeDuration = 3000; // Fade over 3 seconds
+      const statusAge = worker.updatedAt ? (Date.now() - worker.updatedAt) : 0;
+      const fadeAlpha = Math.max(0, 1 - statusAge / completeDuration);
+
+      ctx.save();
+      ctx.globalAlpha = fadeAlpha * 0.95;
+
+      // Green glow background
+      ctx.fillStyle = 'rgba(74,156,45,0.3)';
       ctx.beginPath();
-      ctx.moveTo(x - 4, y + bob + 0);
-      ctx.lineTo(x - 1, y + bob + 3);
-      ctx.lineTo(x + 6, y + bob - 4);
+      ctx.arc(x, y + bob - 14, 8, 0, Math.PI * 2);
+      ctx.fill();
+
+      // Checkmark
+      ctx.strokeStyle = 'rgba(74,156,45,0.95)';
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      ctx.beginPath();
+      ctx.moveTo(x - 5, y + bob - 14);
+      ctx.lineTo(x - 1, y + bob - 10);
+      ctx.lineTo(x + 6, y + bob - 18);
       ctx.stroke();
+
+      // Rising sparkle effect
+      if (fadeAlpha > 0.5) {
+        const sparkleY = y + bob - 20 - (1 - fadeAlpha) * 20;
+        ctx.fillStyle = `rgba(74,156,45,${fadeAlpha * 0.6})`;
+        ctx.beginPath();
+        ctx.arc(x - 3, sparkleY, 2, 0, Math.PI * 2);
+        ctx.arc(x + 4, sparkleY - 3, 1.5, 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      ctx.restore();
     }
 
     ctx.restore();
