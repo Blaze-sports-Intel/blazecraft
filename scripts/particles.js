@@ -298,3 +298,149 @@ export function effectMoveDust(ps, x, y) {
     ps.emit('dust', x, y + 5, 1);
   }
 }
+
+// =============================================================================
+// MACRO ANIMATION EFFECTS - Big visual feedback for significant events
+// =============================================================================
+
+/**
+ * Massive celebration burst - for major milestones
+ * @param {ParticleSystem} ps
+ * @param {number} x
+ * @param {number} y
+ */
+export function effectMacroCelebration(ps, x, y) {
+  // Multi-wave confetti burst
+  ps.burst('confetti', x, y, 60, 50);
+
+  // Delayed secondary wave
+  setTimeout(() => {
+    ps.burst('gold', x, y, 30, 40);
+    ps.burst('spark', x, y, 20, 35);
+  }, 150);
+
+  // Third wave - upward fountain
+  setTimeout(() => {
+    for (let i = 0; i < 15; i++) {
+      const offsetX = (Math.random() - 0.5) * 30;
+      ps.emit('complete', x + offsetX, y, 3);
+    }
+  }, 300);
+}
+
+/**
+ * Critical alert explosion - for blocked workers or errors
+ * @param {ParticleSystem} ps
+ * @param {number} x
+ * @param {number} y
+ */
+export function effectMacroAlert(ps, x, y) {
+  // Aggressive error burst in multiple directions
+  ps.burst('error', x, y, 40, 30);
+
+  // Shockwave ring effect (simulated with radial particles)
+  for (let i = 0; i < 16; i++) {
+    const angle = (i / 16) * Math.PI * 2;
+    const px = x + Math.cos(angle) * 25;
+    const py = y + Math.sin(angle) * 25;
+    ps.emit('error', px, py, 2);
+  }
+}
+
+/**
+ * Region upgrade fanfare - dramatic gold explosion
+ * @param {ParticleSystem} ps
+ * @param {number} x
+ * @param {number} y
+ * @param {number} width - Region width for distributed effect
+ * @param {number} height - Region height for distributed effect
+ */
+export function effectMacroUpgrade(ps, x, y, width = 100, height = 100) {
+  const centerX = x + width / 2;
+  const centerY = y + height / 2;
+
+  // Central gold explosion
+  ps.burst('gold', centerX, centerY, 50, 40);
+  ps.burst('confetti', centerX, centerY, 40, 35);
+
+  // Corner sparkles
+  const corners = [
+    [x, y],
+    [x + width, y],
+    [x, y + height],
+    [x + width, y + height],
+  ];
+
+  corners.forEach(([cx, cy], i) => {
+    setTimeout(() => {
+      ps.burst('spark', cx, cy, 15, 15);
+    }, i * 80);
+  });
+
+  // Rising gold rain
+  setTimeout(() => {
+    for (let i = 0; i < 20; i++) {
+      const rx = x + Math.random() * width;
+      ps.emit('gold', rx, y + height, 2);
+    }
+  }, 200);
+}
+
+/**
+ * Worker spawn entrance with magical effect
+ * @param {ParticleSystem} ps
+ * @param {number} x
+ * @param {number} y
+ */
+export function effectMacroSpawn(ps, x, y) {
+  // Initial implosion effect (particles moving inward)
+  for (let i = 0; i < 12; i++) {
+    const angle = (i / 12) * Math.PI * 2;
+    const startX = x + Math.cos(angle) * 40;
+    const startY = y + Math.sin(angle) * 40;
+    ps.trail('spark', startX, startY, x, y, 3);
+  }
+
+  // Delayed central burst
+  setTimeout(() => {
+    ps.burst('gold', x, y, 25, 15);
+    ps.burst('complete', x, y, 15, 10);
+  }, 200);
+}
+
+/**
+ * Task complete with floating checkmark particles
+ * @param {ParticleSystem} ps
+ * @param {number} x
+ * @param {number} y
+ */
+export function effectMacroComplete(ps, x, y) {
+  // Upward burst of success particles
+  ps.burst('complete', x, y, 30, 20);
+
+  // Trailing sparkles rising
+  for (let i = 0; i < 8; i++) {
+    setTimeout(() => {
+      const offsetX = (Math.random() - 0.5) * 20;
+      ps.emit('spark', x + offsetX, y - i * 5, 2);
+    }, i * 50);
+  }
+}
+
+/**
+ * Resource collection effect - coins flying to destination
+ * @param {ParticleSystem} ps
+ * @param {number} fromX
+ * @param {number} fromY
+ * @param {number} toX
+ * @param {number} toY
+ */
+export function effectResourceCollect(ps, fromX, fromY, toX, toY) {
+  // Gold trail from source to destination
+  ps.trail('gold', fromX, fromY, toX, toY, 10);
+
+  // Burst at collection point
+  setTimeout(() => {
+    ps.burst('gold', toX, toY, 8, 8);
+  }, 300);
+}

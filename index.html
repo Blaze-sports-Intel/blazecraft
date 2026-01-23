@@ -13,10 +13,10 @@
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://blazecraft.app" />
 
-  <!-- Fonts: Plus Jakarta Sans (body), Archivo Black (display), JetBrains Mono, Cinzel (WC3) -->
+  <!-- Fonts: Plus Jakarta Sans, Cinzel (WC3 display), Lora (WC3 body), JetBrains Mono -->
   <link rel="preconnect" href="https://fonts.googleapis.com">
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Cinzel:wght@700&family=JetBrains+Mono:wght@400;500&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <link href="https://fonts.googleapis.com/css2?family=Archivo+Black&family=Cinzel:wght@400;700&family=Cinzel+Decorative:wght@700&family=Lora:ital,wght@0,400;0,600;1,400&family=JetBrains+Mono:wght@400;500;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&family=MedievalSharp&display=swap" rel="stylesheet">
 
   <link rel="stylesheet" href="styles/main.css" />
 </head>
@@ -34,6 +34,9 @@
 
   <!-- Film Grain Overlay (can toggle via BSIGrain.disable()) -->
   <div id="bsi-grain-overlay" class="bsi-grain-overlay" aria-hidden="true"></div>
+
+  <!-- WC3 Magical Wisp Particle Container -->
+  <div id="wc3-wisps" class="wc3-wisps-container" aria-hidden="true"></div>
 
   <div id="app" aria-label="BlazeCraft">
 
@@ -117,15 +120,17 @@
     <!-- WC3 Bottom HUD -->
     <section id="bottomHud" class="panel wc3-hud-bottom" aria-label="Bottom HUD">
 
-      <!-- Portrait Panel -->
+      <!-- Portrait Panel - Enhanced WC3 Style -->
       <div class="wc3-portrait-panel">
-        <div class="wc3-portrait-frame" aria-hidden="true">
-          <div id="portraitIcon" class="wc3-portrait-icon">?</div>
+        <div class="wc3-portrait-enhanced" aria-hidden="true">
+          <div class="wc3-portrait-inner">
+            <div id="portraitIcon" class="wc3-portrait-icon">?</div>
+          </div>
         </div>
         <div class="wc3-portrait-info">
           <div id="portraitName" class="wc3-portrait-name">No selection</div>
-          <div class="wc3-health-bar" aria-label="Health">
-            <div id="portraitHealth" class="wc3-health-fill" style="width: 100%"></div>
+          <div class="wc3-bar wc3-health-bar" aria-label="Health">
+            <div id="portraitHealth" class="wc3-bar-fill" style="width: 100%"></div>
           </div>
           <div id="portraitStatus" class="wc3-portrait-status">Select a worker</div>
         </div>
@@ -171,58 +176,58 @@
         </div>
       </div>
 
-      <!-- Command Grid (4x3) -->
+      <!-- Command Grid (4x3) - Enhanced WC3 Ability Buttons -->
       <div class="wc3-command-panel">
         <div class="wc3-command-grid" role="group" aria-label="Commands">
-          <button class="wc3-cmd" data-cmd="stop" title="Stop (S)" aria-label="Stop">
-            <span class="wc3-cmd-ico" aria-hidden="true">⏹</span>
-            <span class="wc3-cmd-key">S</span>
+          <button class="wc3-cmd wc3-cmd-enhanced" data-cmd="stop" data-wc3-sound="click" aria-label="Stop">
+            <span class="wc3-cmd-icon" aria-hidden="true">⏹</span>
+            <span class="wc3-cmd-hotkey">S</span>
           </button>
-          <button class="wc3-cmd" data-cmd="hold" title="Hold (H)" aria-label="Hold">
-            <span class="wc3-cmd-ico" aria-hidden="true">⏸</span>
-            <span class="wc3-cmd-key">H</span>
+          <button class="wc3-cmd wc3-cmd-enhanced" data-cmd="hold" data-wc3-sound="click" aria-label="Hold">
+            <span class="wc3-cmd-icon" aria-hidden="true">⏸</span>
+            <span class="wc3-cmd-hotkey">H</span>
           </button>
-          <button class="wc3-cmd" data-cmd="resume" title="Resume (R)" aria-label="Resume">
-            <span class="wc3-cmd-ico" aria-hidden="true">▶</span>
-            <span class="wc3-cmd-key">R</span>
+          <button class="wc3-cmd wc3-cmd-enhanced" data-cmd="resume" data-wc3-sound="click" aria-label="Resume">
+            <span class="wc3-cmd-icon" aria-hidden="true">▶</span>
+            <span class="wc3-cmd-hotkey">R</span>
           </button>
-          <button class="wc3-cmd" data-cmd="reassign" title="Reassign (A)" aria-label="Reassign">
-            <span class="wc3-cmd-ico" aria-hidden="true">⇄</span>
-            <span class="wc3-cmd-key">A</span>
-          </button>
-
-          <button class="wc3-cmd" data-cmd="inspect" title="Inspect (I)" aria-label="Inspect">
-            <span class="wc3-cmd-ico" aria-hidden="true">🔎</span>
-            <span class="wc3-cmd-key">I</span>
-          </button>
-          <button class="wc3-cmd" data-cmd="terminate" title="Terminate (X)" aria-label="Terminate">
-            <span class="wc3-cmd-ico" aria-hidden="true">✖</span>
-            <span class="wc3-cmd-key">X</span>
-          </button>
-          <button class="wc3-cmd" data-cmd="logs" title="Logs (L)" aria-label="View Logs">
-            <span class="wc3-cmd-ico" aria-hidden="true">📋</span>
-            <span class="wc3-cmd-key">L</span>
-          </button>
-          <button class="wc3-cmd" data-cmd="files" title="Files (F)" aria-label="View Files">
-            <span class="wc3-cmd-ico" aria-hidden="true">📁</span>
-            <span class="wc3-cmd-key">F</span>
+          <button class="wc3-cmd wc3-cmd-enhanced" data-cmd="reassign" data-wc3-sound="click" aria-label="Reassign">
+            <span class="wc3-cmd-icon" aria-hidden="true">⇄</span>
+            <span class="wc3-cmd-hotkey">A</span>
           </button>
 
-          <button class="wc3-cmd" data-cmd="notes" title="Notes (N)" aria-label="Notes">
-            <span class="wc3-cmd-ico" aria-hidden="true">💬</span>
-            <span class="wc3-cmd-key">N</span>
+          <button class="wc3-cmd wc3-cmd-enhanced" data-cmd="inspect" data-wc3-sound="click" aria-label="Inspect">
+            <span class="wc3-cmd-icon" aria-hidden="true">🔎</span>
+            <span class="wc3-cmd-hotkey">I</span>
           </button>
-          <button class="wc3-cmd" data-cmd="focus" title="Focus (C)" aria-label="Focus">
-            <span class="wc3-cmd-ico" aria-hidden="true">🎯</span>
-            <span class="wc3-cmd-key">C</span>
+          <button class="wc3-cmd wc3-cmd-enhanced" data-cmd="terminate" data-wc3-sound="click" aria-label="Terminate">
+            <span class="wc3-cmd-icon" aria-hidden="true">✖</span>
+            <span class="wc3-cmd-hotkey">X</span>
           </button>
-          <button class="wc3-cmd" data-cmd="guard" title="Guard (G)" aria-label="Guard">
-            <span class="wc3-cmd-ico" aria-hidden="true">🛡</span>
-            <span class="wc3-cmd-key">G</span>
+          <button class="wc3-cmd wc3-cmd-enhanced" data-cmd="logs" data-wc3-sound="click" aria-label="View Logs">
+            <span class="wc3-cmd-icon" aria-hidden="true">📋</span>
+            <span class="wc3-cmd-hotkey">L</span>
           </button>
-          <button class="wc3-cmd" data-cmd="scan" title="Scan (Q)" aria-label="Scan">
-            <span class="wc3-cmd-ico" aria-hidden="true">📡</span>
-            <span class="wc3-cmd-key">Q</span>
+          <button class="wc3-cmd wc3-cmd-enhanced" data-cmd="files" data-wc3-sound="click" aria-label="View Files">
+            <span class="wc3-cmd-icon" aria-hidden="true">📁</span>
+            <span class="wc3-cmd-hotkey">F</span>
+          </button>
+
+          <button class="wc3-cmd wc3-cmd-enhanced" data-cmd="notes" data-wc3-sound="click" aria-label="Notes">
+            <span class="wc3-cmd-icon" aria-hidden="true">💬</span>
+            <span class="wc3-cmd-hotkey">N</span>
+          </button>
+          <button class="wc3-cmd wc3-cmd-enhanced" data-cmd="focus" data-wc3-sound="click" aria-label="Focus">
+            <span class="wc3-cmd-icon" aria-hidden="true">🎯</span>
+            <span class="wc3-cmd-hotkey">C</span>
+          </button>
+          <button class="wc3-cmd wc3-cmd-enhanced" data-cmd="guard" data-wc3-sound="click" aria-label="Guard">
+            <span class="wc3-cmd-icon" aria-hidden="true">🛡</span>
+            <span class="wc3-cmd-hotkey">G</span>
+          </button>
+          <button class="wc3-cmd wc3-cmd-enhanced" data-cmd="scan" data-wc3-sound="click" aria-label="Scan">
+            <span class="wc3-cmd-icon" aria-hidden="true">📡</span>
+            <span class="wc3-cmd-hotkey">Q</span>
           </button>
         </div>
       </div>
@@ -231,6 +236,84 @@
 
   </div>
 
+  <!-- WC3 Tooltip (positioned via JS) -->
+  <div id="wc3-tooltip" class="wc3-tooltip" role="tooltip" aria-hidden="true">
+    <div class="wc3-tooltip-title"></div>
+    <div class="wc3-tooltip-desc"></div>
+    <div class="wc3-tooltip-cost"></div>
+  </div>
+
+  <!-- WC3 Loading Overlay (for initial connection) -->
+  <div id="wc3-loading" class="wc3-loading" style="display: none;" aria-live="polite">
+    <div class="wc3-loading-orb"></div>
+    <div class="wc3-loading-text">Establishing Connection</div>
+  </div>
+
   <script type="module" src="scripts/main.js"></script>
+
+  <!-- WC3 Wisp Particle System -->
+  <script>
+    (function initWisps() {
+      const container = document.getElementById('wc3-wisps');
+      if (!container || window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+
+      const WISP_COUNT = 15;
+
+      for (let i = 0; i < WISP_COUNT; i++) {
+        const wisp = document.createElement('div');
+        wisp.className = 'wc3-wisp';
+        wisp.style.cssText = `
+          left: ${10 + Math.random() * 80}%;
+          animation-delay: ${Math.random() * 8}s;
+          animation-duration: ${6 + Math.random() * 6}s;
+        `;
+        container.appendChild(wisp);
+      }
+    })();
+  </script>
+
+  <!-- WC3 Tooltip System -->
+  <script>
+    (function initTooltips() {
+      const tooltip = document.getElementById('wc3-tooltip');
+      if (!tooltip) return;
+
+      const tooltipData = {
+        stop: { title: 'Stop', desc: 'Halt current task immediately', hotkey: 'S' },
+        hold: { title: 'Hold Position', desc: 'Pause execution, maintain state', hotkey: 'H' },
+        resume: { title: 'Resume', desc: 'Continue paused execution', hotkey: 'R' },
+        reassign: { title: 'Reassign', desc: 'Move worker to new task', hotkey: 'A' },
+        inspect: { title: 'Inspect', desc: 'View detailed worker status', hotkey: 'I' },
+        terminate: { title: 'Terminate', desc: 'End worker process', hotkey: 'X' },
+        logs: { title: 'View Logs', desc: 'Show execution history', hotkey: 'L' },
+        files: { title: 'Browse Files', desc: 'Explore workspace files', hotkey: 'F' },
+        notes: { title: 'Notes', desc: 'View worker annotations', hotkey: 'N' },
+        focus: { title: 'Focus', desc: 'Center view on worker', hotkey: 'C' },
+        guard: { title: 'Guard', desc: 'Monitor for changes', hotkey: 'G' },
+        scan: { title: 'Scan', desc: 'Analyze workspace', hotkey: 'Q' }
+      };
+
+      document.querySelectorAll('[data-cmd]').forEach(btn => {
+        btn.addEventListener('mouseenter', (e) => {
+          const cmd = btn.dataset.cmd;
+          const data = tooltipData[cmd];
+          if (!data) return;
+
+          tooltip.querySelector('.wc3-tooltip-title').innerHTML =
+            `${data.title} <span class="wc3-tooltip-hotkey">${data.hotkey}</span>`;
+          tooltip.querySelector('.wc3-tooltip-desc').textContent = data.desc;
+          tooltip.classList.add('visible');
+
+          const rect = btn.getBoundingClientRect();
+          tooltip.style.left = `${rect.left}px`;
+          tooltip.style.bottom = `${window.innerHeight - rect.top + 8}px`;
+        });
+
+        btn.addEventListener('mouseleave', () => {
+          tooltip.classList.remove('visible');
+        });
+      });
+    })();
+  </script>
 </body>
 </html>

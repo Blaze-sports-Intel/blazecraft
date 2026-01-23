@@ -7,6 +7,8 @@ import { clamp } from './map.js';
 import { OpsBridge } from '../src/ops-bridge.js';
 import { serviceState } from '../src/service-map.js';
 import { AlertSystem, ServiceAlerts } from './alerts.js';
+import { initWispSystem } from './wc3-wisps.js';
+import { initTooltipSystem } from './wc3-tooltips.js';
 
 /** @type {number} */
 let opsEventCount = 0;
@@ -158,6 +160,19 @@ async function init() {
     }
   });
   await opsBridge.connect();
+
+  // Initialize WC3 magical wisp particle system
+  const wispSystem = initWispSystem();
+  if (wispSystem) {
+    // Expose for debugging
+    window.wc3Wisps = wispSystem;
+  }
+
+  // Initialize WC3 tooltip system
+  const tooltipSystem = initTooltipSystem();
+  if (tooltipSystem) {
+    window.wc3Tooltips = tooltipSystem;
+  }
 
   // Welcome alert on demo start
   alertSystem.info('BlazeCraft Initialized', 'Demo mode active. Monitoring BSI services in real-time.', { duration: 4000 });
