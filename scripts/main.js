@@ -209,7 +209,7 @@ async function init() {
     if (e.button === 0) {
       mapCanvas.focus();
       const wpt = renderer.screenToWorld(e.clientX, e.clientY);
-      const hit = hitTestWorker(state, wpt.x, wpt.y);
+      const hit = hitTestWorker(state, wpt.x, wpt.y, renderer.camera.zoom);
       if (hit) {
         state.setSelected([hit.id]);
         commands.assignMode = false;
@@ -367,14 +367,17 @@ async function init() {
  * @param {number} wx
  * @param {number} wy
  */
-function hitTestWorker(state, wx, wy) {
+function hitTestWorker(state, wx, wy, zoom = 1) {
   let best = null;
   let bestD = 999999;
+  // Scale hit radius by inverse of zoom for consistent screen-space behavior
+  // Base radius 32px screen-space → larger in world-space when zoomed out
+  const hitRadius = 32 / zoom;
   for (const w of state.workers.values()) {
     const dx = w.position.x - wx;
     const dy = w.position.y - wy;
     const d = Math.hypot(dx, dy);
-    if (d < 14 && d < bestD) {
+    if (d < hitRadius && d < bestD) {
       best = w;
       bestD = d;
     }
