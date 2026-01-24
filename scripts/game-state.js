@@ -24,11 +24,13 @@ export class GameState {
       'Demo mode is generating worker activity.',
     ];
 
+    // Seed with small values to show "prior session" activity
+    // Prevents jarring all-zeros display on load
     this.stats = {
-      completed: 0,
-      files: 0,
+      completed: 3,
+      files: 8,
       failed: 0,
-      tokens: 0,
+      tokens: 412,
     };
 
     /** @type {Set<Function>} */
