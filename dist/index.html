@@ -1,0 +1,226 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>BlazeCraft | Blaze Sports Intel</title>
+  <meta name="description" content="BlazeCraft: RTS-style console for monitoring and controlling agent sessions." />
+  <meta name="theme-color" content="#0b0b0f" />
+
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+
+  <!-- Preload critical sprites -->
+  <link rel="preload" href="/assets/sprites/units/worker_d0.png" as="image" type="image/png">
+  <link rel="preload" href="/assets/sprites/buildings/townhall_t1.png" as="image" type="image/png">
+
+  <link rel="stylesheet" href="/styles/main.css" />
+  <link rel="stylesheet" href="/styles/faction.css" />
+  <link rel="stylesheet" href="/styles/predictions.css" />
+  <script type="module" crossorigin src="/assets/index-D0Moz3tF.js"></script>
+  <link rel="modulepreload" crossorigin href="/assets/three-MAxUgDHy.js">
+</head>
+<body>
+  <div id="app" aria-label="BlazeCraft">
+
+    <!-- Top Resource Bar -->
+    <header id="topbar" class="panel" role="banner">
+      <div class="topbar-left">
+        <div class="brand">
+          <a class="brand-mark" href="https://blazesportsintel.com/" target="_blank" rel="noopener" aria-label="Open Blaze Sports Intel">
+            <svg class="brand-logo" width="36" height="36" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+              <defs>
+                <linearGradient id="bsiFlame" x1="8" y1="8" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+                  <stop offset="0" stop-color="#E86C2C"/>
+                  <stop offset="1" stop-color="#FFB17A"/>
+                </linearGradient>
+              </defs>
+              <path d="M24 4c2 8-3 10-3 16 0 5 4 7 4 11 0 5-4 9-9 9-6 0-11-5-11-11 0-11 11-12 19-25z" fill="url(#bsiFlame)" opacity="0.85"/>
+              <path d="M28 12c1 6-2 7-2 11 0 3 2 4 2 6 0 3-2 6-6 6-4 0-7-3-7-7 0-7 7-8 13-16z" fill="url(#bsiFlame)"/>
+            </svg>
+          </a>
+          <div class="brand-title">
+            <div class="brand-name">BlazeCraft</div>
+            <div class="brand-sub">RTS Agent Console • Blaze Sports Intel</div>
+          </div>
+        </div>
+
+        <button id="idleAlert" class="idle-alert" type="button" aria-live="polite" hidden>
+          <span class="idle-alert-dot" aria-hidden="true"></span>
+          <span class="idle-alert-text">Idle</span>
+          <span id="idleAlertCount" class="idle-alert-count">0</span>
+        </button>
+      </div>
+
+      <div class="resources" role="group" aria-label="Resources">
+        <div class="res" title="Tasks Completed">
+          <span class="res-ico" aria-hidden="true">✓</span>
+          <span id="resCompleted" class="res-num">0</span>
+        </div>
+        <div class="res" title="Files Modified">
+          <span class="res-ico" aria-hidden="true">⧉</span>
+          <span id="resFiles" class="res-num">0</span>
+        </div>
+        <div class="res" title="Active Workers">
+          <span class="res-ico" aria-hidden="true">⚡</span>
+          <span id="resWorkers" class="res-num">0</span>
+        </div>
+        <div class="res" title="Failed Tasks">
+          <span class="res-ico" aria-hidden="true">!</span>
+          <span id="resFailed" class="res-num">0</span>
+        </div>
+        <div class="res" title="Session Duration">
+          <span class="res-ico" aria-hidden="true">⏱</span>
+          <span id="resDuration" class="res-num">00:00</span>
+        </div>
+        <div class="res" title="Tokens Spent">
+          <span class="res-ico" aria-hidden="true">◎</span>
+          <span id="resTokens" class="res-num">0</span>
+        </div>
+      </div>
+
+      <div class="topbar-right">
+        <!-- Faction Indicator -->
+        <button id="factionBtn" class="faction-indicator" type="button" title="Change faction">
+          <span id="factionIndicator" class="faction-indicator-empty">No Faction</span>
+        </button>
+        <!-- BSI Mode Selector -->
+        <div class="mode-selector" role="group" aria-label="Bridge mode">
+          <button class="mode-btn active" data-bridge-mode="spectator" title="Spectator: Basic events only">Spec</button>
+          <button class="mode-btn" data-bridge-mode="manager" title="Manager: +Standings, Injuries">Mgr</button>
+          <button class="mode-btn" data-bridge-mode="commander" title="Commander: All events">Cmd</button>
+        </div>
+        <span id="bridgeStatus" class="tag" title="BSI GameBridge status">BSI Demo</span>
+        <button id="toggleBsiDemo" class="btn btn-sm" type="button" aria-pressed="true" title="Toggle BSI demo/live">SimFeed</button>
+        <button id="togglePredictions" class="btn btn-gold" type="button" aria-pressed="false">Predict</button>
+        <button id="toggleLog" class="btn" type="button" aria-pressed="false">Log</button>
+        <button id="toggleDemo" class="btn btn-accent" type="button" aria-pressed="true" title="Toggle worker demo mode">Demo</button>
+      </div>
+    </header>
+
+    <!-- Center Map -->
+    <main id="mapWrap" class="panel" role="main">
+      <canvas id="mapCanvas" width="1280" height="720" aria-label="Workspace Map" tabindex="0"></canvas>
+      <div id="mapHud" class="hud" aria-hidden="true">
+        <div class="hud-row">
+          <span class="kbd">Drag</span> select
+          <span class="dot">•</span>
+          <span class="kbd">RMB</span> assign
+          <span class="dot">•</span>
+          <span class="kbd">Wheel</span> zoom
+          <span class="dot">•</span>
+          <span class="kbd">MMB</span> pan
+        </div>
+      </div>
+    </main>
+
+    <!-- Event Log (Right) -->
+    <aside id="logPanel" class="panel" aria-label="Event Log">
+      <div class="panel-title">
+        <span>Event Log</span>
+        <span id="logStatus" class="tag">Live</span>
+      </div>
+      <div id="logFeed" class="log-feed" role="log" aria-live="polite"></div>
+    </aside>
+
+    <!-- Prediction Panel (Slide-out) -->
+    <aside id="predictionPanel" class="panel prediction-panel" aria-label="Predictions" hidden>
+      <div class="panel-title">
+        <span>Predictions</span>
+        <span id="predictionBalance" class="tag">200 gold</span>
+      </div>
+    </aside>
+
+    <!-- Bottom Left: Portrait + Minimap -->
+    <section id="leftBottom" class="stack">
+      <div id="portraitPanel" class="panel">
+        <div class="panel-title">Selected</div>
+        <div class="portrait">
+          <div class="portrait-frame" aria-hidden="true">
+            <div id="portraitIcon" class="portrait-icon">?</div>
+          </div>
+          <div class="portrait-meta">
+            <div id="portraitName" class="portrait-name">No selection</div>
+            <div id="portraitTask" class="portrait-task">Select a worker on the map.</div>
+
+            <div class="meter" aria-label="Progress">
+              <div id="portraitMeter" class="meter-fill" style="width: 0%"></div>
+            </div>
+
+            <div class="kv">
+              <div class="kv-row"><span class="k">Status</span><span id="portraitStatus" class="v">-</span></div>
+              <div class="kv-row"><span class="k">Elapsed</span><span id="portraitElapsed" class="v">-</span></div>
+              <div class="kv-row"><span class="k">Tokens</span><span id="portraitTokens" class="v">-</span></div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div id="minimapPanel" class="panel">
+        <div class="panel-title">Minimap</div>
+        <canvas id="minimapCanvas" width="280" height="180" aria-label="Minimap"></canvas>
+      </div>
+    </section>
+
+    <!-- Bottom Right: Command Card -->
+    <section id="commandPanel" class="panel" aria-label="Command Card">
+      <div class="panel-title">Command Card</div>
+      <div class="cmd-grid" role="group" aria-label="Commands">
+        <button class="cmd" data-cmd="stop" title="Stop (S)"><span class="cmd-ico">⏹</span><span class="cmd-label">Stop</span></button>
+        <button class="cmd" data-cmd="hold" title="Hold (H)"><span class="cmd-ico">⏸</span><span class="cmd-label">Hold</span></button>
+        <button class="cmd" data-cmd="resume" title="Resume (R)"><span class="cmd-ico">▶</span><span class="cmd-label">Resume</span></button>
+        <button class="cmd" data-cmd="reassign" title="Reassign (A)"><span class="cmd-ico">⇄</span><span class="cmd-label">Assign</span></button>
+        <button class="cmd" data-cmd="inspect" title="Inspect (I)"><span class="cmd-ico">⌕</span><span class="cmd-label">Inspect</span></button>
+        <button class="cmd" data-cmd="terminate" title="Terminate (X)"><span class="cmd-ico">✖</span><span class="cmd-label">Terminate</span></button>
+
+        <button class="cmd cmd-muted" disabled><span class="cmd-ico">≡</span><span class="cmd-label">Logs</span></button>
+        <button class="cmd cmd-muted" disabled><span class="cmd-ico">▦</span><span class="cmd-label">Files</span></button>
+        <button class="cmd cmd-muted" disabled><span class="cmd-ico">✎</span><span class="cmd-label">Notes</span></button>
+
+        <button class="cmd cmd-muted" disabled><span class="cmd-ico">◎</span><span class="cmd-label">Focus</span></button>
+        <button class="cmd cmd-muted" disabled><span class="cmd-ico">⛨</span><span class="cmd-label">Guard</span></button>
+        <button class="cmd cmd-muted" disabled><span class="cmd-ico">◉</span><span class="cmd-label">Scan</span></button>
+      </div>
+
+      <div class="cmd-hints" aria-hidden="true">
+        Hotkeys: <span class="kbd">S</span> stop, <span class="kbd">H</span> hold, <span class="kbd">R</span> resume, <span class="kbd">A</span> assign, <span class="kbd">I</span> inspect, <span class="kbd">X</span> terminate
+      </div>
+    </section>
+
+    <!-- Bottom Center: Flavor panel -->
+    <section id="bottomCenter" class="panel" aria-label="Status">
+      <div class="panel-title">Ops Feed</div>
+      <div id="scoutReport" class="scout">
+        <div class="scout-line">No threats detected.</div>
+        <div class="scout-line muted">Demo mode is generating worker activity.</div>
+      </div>
+    </section>
+
+  </div>
+
+  <!-- Loading Screen -->
+  <div id="loading" class="loading-overlay">
+    <div class="loading-content">
+      <div class="loading-logo">
+        <svg class="loading-flame" width="56" height="56" viewBox="0 0 48 48" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+          <defs>
+            <linearGradient id="loadFlame" x1="8" y1="8" x2="40" y2="40" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stop-color="#E86C2C"/>
+              <stop offset="1" stop-color="#FFB17A"/>
+            </linearGradient>
+          </defs>
+          <path d="M24 4c2 8-3 10-3 16 0 5 4 7 4 11 0 5-4 9-9 9-6 0-11-5-11-11 0-11 11-12 19-25z" fill="url(#loadFlame)" opacity="0.85"/>
+          <path d="M28 12c1 6-2 7-2 11 0 3 2 4 2 6 0 3-2 6-6 6-4 0-7-3-7-7 0-7 7-8 13-16z" fill="url(#loadFlame)"/>
+        </svg>
+        <span class="loading-title">BlazeCraft</span>
+      </div>
+      <div class="loading-bar">
+        <div class="loading-fill"></div>
+      </div>
+      <div class="loading-text">Loading assets...</div>
+    </div>
+  </div>
+
+</body>
+</html>

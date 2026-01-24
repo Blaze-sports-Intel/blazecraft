@@ -2894,7 +2894,7 @@ body:not([data-mode]) .wc3-game-area {
 .wc3-hud-bottom-enhanced {
   grid-row: 3;
   display: grid;
-  grid-template-columns: minmax(200px, 280px) minmax(180px, 220px) 1fr minmax(200px, 280px);
+  grid-template-columns: 220px 200px 1fr 240px;
   gap: 0;
   border-radius: 0;
   border-width: 3px 0 0 0;

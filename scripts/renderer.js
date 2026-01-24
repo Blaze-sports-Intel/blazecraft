@@ -354,15 +354,38 @@ export class Renderer {
     const cx = b.x + b.width / 2;
     const cy = b.y + b.height / 2;
 
+    // Draw base platform shadow for all buildings
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy + 10, b.width * 0.4, b.height * 0.2, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
     // Draw isometric building based on region type
-    if (region.type === 'townhall') {
-      this.drawTownHall(ctx, cx, cy, b.width, b.height, now, region.name);
-    } else if (region.type === 'goldmine') {
-      this.drawGoldMine(ctx, cx, cy, b.width, b.height, now, region.name);
-    } else if (region.type === 'lumber') {
-      this.drawLumberMill(ctx, cx, cy, b.width, b.height, now, region.name);
-    } else {
-      this.drawBarracks(ctx, cx, cy, b.width, b.height, now, region.name);
+    try {
+      if (region.type === 'townhall') {
+        this.drawTownHall(ctx, cx, cy, b.width, b.height, now, region.name);
+      } else if (region.type === 'goldmine') {
+        this.drawGoldMine(ctx, cx, cy, b.width, b.height, now, region.name);
+      } else if (region.type === 'lumber') {
+        this.drawLumberMill(ctx, cx, cy, b.width, b.height, now, region.name);
+      } else {
+        this.drawBarracks(ctx, cx, cy, b.width, b.height, now, region.name);
+      }
+    } catch (e) {
+      // Fallback: draw simple rectangle if building drawing fails
+      ctx.save();
+      ctx.fillStyle = region.type === 'townhall' ? '#8B7355' : region.type === 'goldmine' ? '#DAA520' : region.type === 'lumber' ? '#228B22' : '#696969';
+      ctx.fillRect(b.x, b.y, b.width, b.height);
+      ctx.strokeStyle = '#D4AF37';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(b.x, b.y, b.width, b.height);
+      ctx.font = 'bold 14px Cinzel, serif';
+      ctx.fillStyle = '#FFF';
+      ctx.textAlign = 'center';
+      ctx.fillText(region.name, cx, cy);
+      ctx.restore();
     }
 
     // activity sparkle

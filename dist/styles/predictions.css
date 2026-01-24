@@ -1,0 +1,433 @@
+/**
+ * Prediction Panel Styles
+ */
+
+/* Panel */
+.prediction-panel {
+  position: fixed;
+  top: 72px;
+  right: 12px;
+  bottom: 260px;
+  width: 320px;
+  z-index: 50;
+  display: flex;
+  flex-direction: column;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0.18)),
+    var(--panel2);
+  border: 1px solid var(--border2);
+  border-radius: var(--r2);
+  box-shadow: 0 18px 40px var(--shadow);
+  overflow: hidden;
+  transform: translateX(calc(100% + 24px));
+  transition: transform 0.25s ease;
+}
+
+.prediction-panel:not([hidden]) {
+  transform: translateX(0);
+}
+
+.prediction-content {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+/* Markets section */
+.prediction-markets {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.prediction-empty {
+  padding: 20px;
+  text-align: center;
+  color: var(--faint);
+  font-size: 13px;
+}
+
+.game-markets {
+  margin-bottom: 12px;
+}
+
+.game-markets:last-child {
+  margin-bottom: 0;
+}
+
+.game-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.game-teams {
+  color: var(--text);
+}
+
+.game-score {
+  color: var(--accent);
+}
+
+.market-buttons {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 6px;
+}
+
+.market-btn {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 10px;
+  font-size: 11px;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.market-btn:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--border2);
+}
+
+.market-icon {
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.market-name {
+  font-weight: 500;
+}
+
+/* Prediction form */
+.prediction-form {
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.2);
+  border-bottom: 1px solid var(--border);
+}
+
+.prediction-form-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.form-market-type {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.form-close {
+  width: 24px;
+  height: 24px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-radius: 4px;
+  cursor: pointer;
+}
+
+.form-close:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Prediction options */
+.prediction-options {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 12px;
+}
+
+.prediction-option {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+  padding: 12px 8px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.prediction-option:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--border2);
+}
+
+.prediction-option.selected {
+  background: rgba(232, 108, 44, 0.15);
+  border-color: var(--accent);
+}
+
+.option-label {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.option-odds {
+  font-size: 12px;
+  color: var(--good);
+}
+
+/* Stake input */
+.prediction-stake {
+  margin-bottom: 12px;
+}
+
+.prediction-stake label {
+  display: block;
+  margin-bottom: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.stake-input-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 8px;
+}
+
+.stake-input-wrap input {
+  flex: 1;
+  padding: 10px 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.stake-input-wrap input:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+
+.stake-unit {
+  font-size: 12px;
+  color: var(--muted);
+}
+
+.stake-quick {
+  display: flex;
+  gap: 6px;
+}
+
+.stake-quick button {
+  flex: 1;
+  padding: 6px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid var(--border);
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all 0.1s ease;
+}
+
+.stake-quick button:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* Payout */
+.prediction-payout {
+  margin-bottom: 12px;
+  font-size: 13px;
+  color: var(--muted);
+}
+
+.prediction-payout span {
+  color: var(--good);
+  font-weight: 600;
+}
+
+/* Submit button */
+.prediction-submit {
+  width: 100%;
+  padding: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--bg);
+  background: var(--accent);
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.prediction-submit:hover:not(:disabled) {
+  background: var(--accent2);
+}
+
+.prediction-submit:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+/* Pending predictions */
+.prediction-pending,
+.prediction-history {
+  padding: 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.section-title {
+  margin-bottom: 10px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.pending-list,
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.empty-hint {
+  padding: 12px;
+  text-align: center;
+  font-size: 12px;
+  color: var(--faint);
+}
+
+.pending-item,
+.history-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 6px;
+}
+
+.pending-info,
+.history-info {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.pending-type,
+.history-type {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.pending-choice {
+  font-size: 11px;
+  color: var(--muted);
+}
+
+.pending-stake {
+  font-size: 12px;
+  color: var(--accent);
+}
+
+.history-result {
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.history-won .history-result {
+  color: var(--good);
+}
+
+.history-lost .history-result {
+  color: var(--bad);
+}
+
+.history-refunded .history-result {
+  color: var(--muted);
+}
+
+.history-amount {
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.history-won .history-amount {
+  color: var(--good);
+}
+
+.history-lost .history-amount {
+  color: var(--bad);
+}
+
+/* Stats */
+.prediction-stats {
+  display: flex;
+  gap: 16px;
+  padding: 12px;
+  background: rgba(0, 0, 0, 0.15);
+}
+
+.stat {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stat-label {
+  font-size: 10px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--faint);
+}
+
+.stat-value {
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--text);
+}
+
+.stat-value.positive {
+  color: var(--good);
+}
+
+.stat-value.negative {
+  color: var(--bad);
+}
+
+/* Predict button in topbar */
+.btn-gold {
+  color: var(--bg);
+  background: linear-gradient(135deg, #FFD700, #FFA500);
+  border: none;
+}
+
+.btn-gold:hover {
+  background: linear-gradient(135deg, #FFE44D, #FFB733);
+}

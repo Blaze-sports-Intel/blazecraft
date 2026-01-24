@@ -1,0 +1,412 @@
+/**
+ * Faction Selector Styles
+ * Team selection overlay for BlazeCraft faction system.
+ */
+
+/* Overlay */
+.faction-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(0, 0, 0, 0.85);
+  backdrop-filter: blur(8px);
+  animation: factionFadeIn 0.3s ease-out;
+}
+
+.faction-overlay-closing {
+  animation: factionFadeOut 0.2s ease-in forwards;
+}
+
+@keyframes factionFadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+@keyframes factionFadeOut {
+  from {
+    opacity: 1;
+  }
+  to {
+    opacity: 0;
+  }
+}
+
+/* Modal */
+.faction-modal {
+  position: relative;
+  width: 90vw;
+  max-width: 1000px;
+  max-height: 90vh;
+  padding: 32px;
+  background:
+    linear-gradient(180deg, rgba(255,255,255,0.06), rgba(0,0,0,0.18)),
+    var(--panel2);
+  border: 1px solid var(--border2);
+  border-radius: var(--r2);
+  box-shadow:
+    0 24px 60px rgba(0, 0, 0, 0.6),
+    inset 0 1px 0 rgba(255,255,255,0.08);
+  overflow: hidden;
+  animation: factionSlideIn 0.3s ease-out;
+}
+
+@keyframes factionSlideIn {
+  from {
+    transform: translateY(20px);
+    opacity: 0;
+  }
+  to {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+/* Header */
+.faction-header {
+  margin-bottom: 24px;
+  text-align: center;
+}
+
+.faction-title {
+  margin: 0 0 8px;
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--text);
+  letter-spacing: -0.02em;
+}
+
+.faction-subtitle {
+  margin: 0;
+  font-size: 14px;
+  color: var(--muted);
+}
+
+/* Tabs */
+.faction-tabs {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 24px;
+  padding: 6px;
+  background: rgba(0, 0, 0, 0.3);
+  border-radius: 12px;
+}
+
+.faction-tab {
+  flex: 1;
+  padding: 12px 16px;
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  color: var(--muted);
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.faction-tab:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.faction-tab.active {
+  color: var(--bg);
+  background: var(--accent);
+}
+
+/* Content layout */
+.faction-content {
+  display: grid;
+  grid-template-columns: 1fr 280px;
+  gap: 24px;
+  margin-bottom: 24px;
+}
+
+/* Team grid */
+.faction-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+  gap: 12px;
+  max-height: 380px;
+  overflow-y: auto;
+  padding-right: 8px;
+}
+
+.faction-grid::-webkit-scrollbar {
+  width: 6px;
+}
+
+.faction-grid::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.faction-grid::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.15);
+  border-radius: 3px;
+}
+
+.faction-grid::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Team card */
+.faction-team {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 16px 12px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.faction-team:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: var(--border2);
+  transform: translateY(-2px);
+}
+
+.faction-team.selected {
+  background: rgba(232, 108, 44, 0.15);
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px rgba(232, 108, 44, 0.3);
+}
+
+.team-abbr {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  font-size: 16px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 10px;
+}
+
+.faction-team.selected .team-abbr {
+  background: var(--accent);
+  color: var(--bg);
+}
+
+.team-name {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text);
+  text-align: center;
+}
+
+.team-city {
+  font-size: 11px;
+  color: var(--faint);
+}
+
+/* Preview panel */
+.faction-preview {
+  display: flex;
+  flex-direction: column;
+  background: rgba(0, 0, 0, 0.25);
+  border: 1px solid var(--border);
+  border-radius: var(--r);
+}
+
+.preview-header {
+  padding: 14px 16px;
+  border-bottom: 1px solid var(--border);
+}
+
+.preview-title {
+  font-size: 12px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--muted);
+}
+
+.preview-content {
+  flex: 1;
+  padding: 20px 16px;
+}
+
+.preview-team {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+}
+
+.preview-team-abbr {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--bg);
+  background: var(--accent);
+  border-radius: 12px;
+}
+
+.preview-team-name {
+  font-size: 16px;
+  font-weight: 600;
+  color: var(--text);
+}
+
+.preview-modifiers {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.preview-modifier {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.04);
+  border-radius: 8px;
+}
+
+.modifier-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  font-size: 14px;
+  font-weight: 700;
+  color: var(--good);
+  background: rgba(55, 214, 122, 0.15);
+  border-radius: 6px;
+}
+
+.preview-modifier-neutral .modifier-icon {
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.modifier-text {
+  font-size: 13px;
+  color: var(--text);
+}
+
+.preview-modifier-hint {
+  padding: 16px;
+  font-size: 13px;
+  color: var(--faint);
+  text-align: center;
+}
+
+.preview-note {
+  margin-top: 16px;
+  padding-top: 16px;
+  border-top: 1px solid var(--border);
+  font-size: 11px;
+  color: var(--faint);
+  text-align: center;
+}
+
+/* Actions */
+.faction-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 12px;
+}
+
+.faction-btn {
+  padding: 14px 24px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.faction-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.faction-btn-secondary {
+  color: var(--muted);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.faction-btn-secondary:hover:not(:disabled) {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.faction-btn-primary {
+  color: var(--bg);
+  background: var(--accent);
+}
+
+.faction-btn-primary:hover:not(:disabled) {
+  background: var(--accent2);
+}
+
+/* Faction indicator in topbar */
+.faction-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 12px;
+  background: rgba(232, 108, 44, 0.12);
+  border: 1px solid rgba(232, 108, 44, 0.25);
+  border-radius: 8px;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.faction-indicator:hover {
+  background: rgba(232, 108, 44, 0.2);
+}
+
+.faction-indicator-abbr {
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--accent);
+}
+
+.faction-indicator-name {
+  font-size: 12px;
+  color: var(--text);
+}
+
+.faction-indicator-empty {
+  color: var(--faint);
+}
+
+/* Responsive */
+@media (max-width: 800px) {
+  .faction-content {
+    grid-template-columns: 1fr;
+  }
+
+  .faction-preview {
+    order: -1;
+  }
+
+  .faction-grid {
+    max-height: 280px;
+  }
+}
