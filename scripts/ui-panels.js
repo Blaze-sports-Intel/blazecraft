@@ -10,6 +10,17 @@ const ICONS = {
   status: '•',
 };
 
+// Worker avatar masks based on event type
+const AVATARS = {
+  spawn: { emoji: '🟢', class: 'log-avatar-spawn' },
+  task_start: { emoji: '🟡', class: 'log-avatar-working' },
+  task_complete: { emoji: '🟠', class: 'log-avatar-complete' },
+  error: { emoji: '🔴', class: 'log-avatar-error' },
+  terminate: { emoji: '⚪', class: 'log-avatar-default' },
+  command: { emoji: '🔵', class: 'log-avatar-working' },
+  status: { emoji: '🟤', class: 'log-avatar-default' },
+};
+
 function el(id) { return document.getElementById(id); }
 
 export class UIPanels {
@@ -21,7 +32,7 @@ export class UIPanels {
     this.state = state;
     this.renderer = renderer;
 
-    // Legacy resource elements (may not exist in WC3 layout)
+    // Task metrics resource elements (new enhanced layout)
     this.$resCompleted = el('resCompleted');
     this.$resFiles = el('resFiles');
     this.$resWorkers = el('resWorkers');
@@ -29,14 +40,17 @@ export class UIPanels {
     this.$resDuration = el('resDuration');
     this.$resTokens = el('resTokens');
 
+    // Enhanced idle alert
     this.$idleAlert = el('idleAlert');
     this.$idleAlertCount = el('idleAlertCount');
 
-    // Portrait elements (WC3 layout uses different IDs)
+    // Enhanced portrait elements
     this.$portraitIcon = el('portraitIcon');
+    this.$portraitAvatar = el('portraitAvatar');
     this.$portraitName = el('portraitName');
     this.$portraitTask = el('portraitTask');
-    this.$portraitMeter = el('portraitMeter') || el('portraitHealth'); // WC3 uses portraitHealth
+    this.$portraitMeter = el('portraitMeter') || el('portraitHealth');
+    this.$portraitProgress = el('portraitProgress');
     this.$portraitStatus = el('portraitStatus');
     this.$portraitElapsed = el('portraitElapsed');
     this.$portraitTokens = el('portraitTokens');
@@ -88,47 +102,68 @@ export class UIPanels {
       }
     }
 
-    // portrait
+    // portrait - enhanced display
     const selected = s.getSelectedWorkers();
     if (selected.length === 1) {
       const w = selected[0];
-      if (this.$portraitIcon) this.$portraitIcon.textContent = w.name.slice(0, 1).toUpperCase();
+      // Worker avatar emoji based on status
+      const statusEmojis = {
+        working: '🤖',
+        idle: '😴',
+        blocked: '🚫',
+        complete: '✅',
+        terminated: '💀',
+        hold: '⏸️',
+        moving: '🚶',
+      };
+      if (this.$portraitIcon) this.$portraitIcon.textContent = statusEmojis[w.status] || '🤖';
       if (this.$portraitName) this.$portraitName.textContent = w.name;
-      if (this.$portraitTask) this.$portraitTask.textContent = w.currentTask || 'No current task.';
+      if (this.$portraitTask) this.$portraitTask.textContent = w.currentTask || 'No current task';
       if (this.$portraitStatus) this.$portraitStatus.textContent = w.status;
       if (this.$portraitElapsed) this.$portraitElapsed.textContent = formatDuration(Date.now() - w.spawnedAt);
       if (this.$portraitTokens) this.$portraitTokens.textContent = String(w.tokensUsed);
       const pct = (w.progress >= 0 && w.progress <= 100) ? w.progress : 0;
       if (this.$portraitMeter) {
         this.$portraitMeter.style.width = `${pct}%`;
-        // WC3 layout uses wc3-health-fill class
-        const isWc3 = this.$portraitMeter.classList.contains('wc3-health-fill');
-        this.$portraitMeter.className = isWc3 ? 'wc3-health-fill' : `meter-fill status-${w.status}`;
+        // Apply status-based color to progress bar
+        this.$portraitMeter.className = 'wc3-progress-fill';
+        if (w.status === 'blocked') {
+          this.$portraitMeter.style.background = 'linear-gradient(180deg, #e74c3c 0%, #c0392b 50%, #922b21 100%)';
+        } else if (w.status === 'hold') {
+          this.$portraitMeter.style.background = 'linear-gradient(180deg, #f39c12 0%, #d68910 50%, #b9770e 100%)';
+        } else if (w.status === 'complete') {
+          this.$portraitMeter.style.background = 'linear-gradient(180deg, #D4AF37 0%, #B8860B 50%, #8B6914 100%)';
+        } else {
+          this.$portraitMeter.style.background = '';
+        }
       }
+      if (this.$portraitProgress) this.$portraitProgress.textContent = `${Math.round(pct)}%`;
     } else if (selected.length > 1) {
-      if (this.$portraitIcon) this.$portraitIcon.textContent = String(selected.length);
+      if (this.$portraitIcon) this.$portraitIcon.textContent = `${selected.length}`;
       if (this.$portraitName) this.$portraitName.textContent = `${selected.length} units selected`;
-      if (this.$portraitTask) this.$portraitTask.textContent = 'Multiple tasks.';
+      if (this.$portraitTask) this.$portraitTask.textContent = 'Multiple tasks';
       if (this.$portraitStatus) this.$portraitStatus.textContent = '-';
       if (this.$portraitElapsed) this.$portraitElapsed.textContent = '-';
       if (this.$portraitTokens) this.$portraitTokens.textContent = '-';
       if (this.$portraitMeter) {
         this.$portraitMeter.style.width = '0%';
-        const isWc3 = this.$portraitMeter.classList.contains('wc3-health-fill');
-        this.$portraitMeter.className = isWc3 ? 'wc3-health-fill' : 'meter-fill';
+        this.$portraitMeter.className = 'wc3-progress-fill';
+        this.$portraitMeter.style.background = '';
       }
+      if (this.$portraitProgress) this.$portraitProgress.textContent = '-';
     } else {
-      if (this.$portraitIcon) this.$portraitIcon.textContent = '?';
+      if (this.$portraitIcon) this.$portraitIcon.textContent = '❓';
       if (this.$portraitName) this.$portraitName.textContent = 'No selection';
-      if (this.$portraitTask) this.$portraitTask.textContent = 'Select a worker on the map.';
+      if (this.$portraitTask) this.$portraitTask.textContent = 'Select a worker on the map';
       if (this.$portraitStatus) this.$portraitStatus.textContent = 'Select a worker';
       if (this.$portraitElapsed) this.$portraitElapsed.textContent = '-';
       if (this.$portraitTokens) this.$portraitTokens.textContent = '-';
       if (this.$portraitMeter) {
         this.$portraitMeter.style.width = '100%';
-        const isWc3 = this.$portraitMeter.classList.contains('wc3-health-fill');
-        this.$portraitMeter.className = isWc3 ? 'wc3-health-fill' : 'meter-fill';
+        this.$portraitMeter.className = 'wc3-progress-fill';
+        this.$portraitMeter.style.background = 'linear-gradient(180deg, #607D8B 0%, #455A64 50%, #37474F 100%)';
       }
+      if (this.$portraitProgress) this.$portraitProgress.textContent = '-';
     }
 
     // scout report (may not exist in WC3 layout)
@@ -154,7 +189,6 @@ export class UIPanels {
     this.$logStatus.textContent = s.workers.size ? 'Live' : 'Idle';
 
     this.$logFeed.innerHTML = items.map(evt => {
-      const icon = ICONS[evt.type] || '•';
       const t = new Date(evt.timestamp);
       const isValidDate = !isNaN(t.getTime());
       const hh = isValidDate ? String(t.getHours()).padStart(2,'0') : '00';
@@ -163,10 +197,32 @@ export class UIPanels {
       const stamp = isValidDate ? `${hh}:${mm}:${ss}` : 'Now';
       const cls = evt.type === 'error' ? 'err' : evt.type === 'task_complete' ? 'ok' : evt.type === 'spawn' ? 'spawn' : '';
 
+      // Get avatar info based on event type
+      const avatar = AVATARS[evt.type] || AVATARS.status;
+      const avatarClass = avatar.class;
+
+      // Worker avatar masks - colorful face icons like in reference
+      const avatarEmojis = {
+        spawn: '🟢',
+        task_start: '🟡',
+        task_complete: '🟠',
+        error: '🔴',
+        terminate: '⚪',
+        command: '🔵',
+        status: '🟤',
+      };
+      const avatarEmoji = avatarEmojis[evt.type] || '🟤';
+
+      // Format details text - remove "Error:" prefix for error type since CSS adds it
+      let detailsText = escapeHtml(evt.details);
+      if (evt.type === 'error') {
+        detailsText = detailsText.replace(/^Error:\s*/i, '');
+      }
+
       return `<button class="log-item ${cls}" data-worker="${evt.workerId}">
+        <div class="log-avatar ${avatarClass}">${avatarEmoji}</div>
         <span class="log-time">${stamp}</span>
-        <span class="log-ico">${icon}</span>
-        <span class="log-text">${escapeHtml(evt.details)}</span>
+        <span class="log-text">${detailsText}</span>
       </button>`;
     }).join('');
 
