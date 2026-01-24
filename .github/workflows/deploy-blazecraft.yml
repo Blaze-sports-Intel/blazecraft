@@ -41,7 +41,8 @@ jobs:
           retention-days: 7
 
   deploy:
-    needs: test
+    # TODO: Re-enable 'needs: test' after resolving GitHub billing issue
+    # needs: test
     if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request'
     runs-on: ubuntu-latest
     permissions:
