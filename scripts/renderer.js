@@ -48,6 +48,10 @@ export class Renderer {
 
     this.world = { w: 1280, h: 720 };
 
+    // Procedural terrain
+    this.terrainElements = [];
+    this.generateTerrain();
+
     this.resize();
 
     window.addEventListener('resize', () => this.resize());
@@ -92,6 +96,108 @@ export class Renderer {
     this.minimapCanvas.style.width = `${mw}px`;
     this.minimapCanvas.style.height = `${mh}px`;
     this.mctx.setTransform(this.dpr, 0, 0, this.dpr, 0, 0);
+  }
+
+  seededRandom(seed) {
+    const x = Math.sin(seed * 9999) * 10000;
+    return x - Math.floor(x);
+  }
+
+  generateTerrain() {
+    const { w, h } = this.world;
+    this.terrainElements = [];
+
+    const regionBounds = REGIONS.map(r => ({
+      x: r.bounds.x - 30, y: r.bounds.y - 30,
+      w: r.bounds.width + 60, h: r.bounds.height + 60
+    }));
+
+    const isInRegion = (x, y) => regionBounds.some(b =>
+      x >= b.x && x <= b.x + b.w && y >= b.y && y <= b.y + b.h);
+
+    // Grass patches
+    for (let i = 0; i < 150; i++) {
+      const x = this.seededRandom(i * 3.7) * w;
+      const y = this.seededRandom(i * 5.3) * h;
+      if (isInRegion(x, y)) continue;
+      this.terrainElements.push({ type: 'grass', x, y, size: 8 + this.seededRandom(i * 2.1) * 20, shade: this.seededRandom(i * 1.3) });
+    }
+
+    // Trees
+    for (let i = 0; i < 30; i++) {
+      const x = this.seededRandom(i * 11.3 + 200) * w;
+      const y = this.seededRandom(i * 8.7 + 200) * h;
+      if (isInRegion(x, y)) continue;
+      this.terrainElements.push({ type: 'tree', x, y, height: 30 + this.seededRandom(i * 4.1 + 200) * 25, variant: Math.floor(this.seededRandom(i * 2.3 + 200) * 3) });
+    }
+
+    // Rocks
+    for (let i = 0; i < 20; i++) {
+      const x = this.seededRandom(i * 13.7 + 300) * w;
+      const y = this.seededRandom(i * 9.1 + 300) * h;
+      if (isInRegion(x, y)) continue;
+      this.terrainElements.push({ type: 'rock', x, y, size: 6 + this.seededRandom(i * 5.3 + 300) * 10 });
+    }
+
+    this.terrainElements.sort((a, b) => a.y - b.y);
+  }
+
+  drawTerrain(now) {
+    const ctx = this.ctx;
+    for (const el of this.terrainElements) {
+      if (el.type === 'grass') this.drawGrass(ctx, el.x, el.y, el.size, el.shade);
+      else if (el.type === 'tree') this.drawTree(ctx, el.x, el.y, el.height, el.variant, now);
+      else if (el.type === 'rock') this.drawRock(ctx, el.x, el.y, el.size);
+    }
+  }
+
+  drawGrass(ctx, x, y, size, shade) {
+    ctx.fillStyle = `rgba(${30 + shade * 20}, ${80 + shade * 50}, ${20 + shade * 15}, 0.4)`;
+    ctx.beginPath();
+    ctx.ellipse(x, y, size, size * 0.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  drawTree(ctx, x, y, height, variant, now) {
+    const sway = Math.sin(now / 2000 + x * 0.01) * 2;
+    ctx.fillStyle = 'rgba(0,0,0,0.25)';
+    ctx.beginPath();
+    ctx.ellipse(x, y + 5, height * 0.35, height * 0.12, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#4a3728';
+    ctx.fillRect(x - 3, y - height * 0.35, 6, height * 0.45);
+
+    ctx.fillStyle = ['#2d5a27', '#3d6b37', '#1e4a1e'][variant % 3];
+    if (variant === 0) {
+      ctx.beginPath();
+      ctx.moveTo(x + sway, y - height);
+      ctx.lineTo(x - height * 0.3 + sway * 0.5, y - height * 0.25);
+      ctx.lineTo(x + height * 0.3 + sway * 0.5, y - height * 0.25);
+      ctx.closePath();
+      ctx.fill();
+    } else {
+      ctx.beginPath();
+      ctx.arc(x + sway, y - height * 0.55, height * 0.35, 0, Math.PI * 2);
+      ctx.fill();
+    }
+  }
+
+  drawRock(ctx, x, y, size) {
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(x + 2, y + size * 0.25, size * 0.7, size * 0.25, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.fillStyle = '#5a5a5a';
+    ctx.beginPath();
+    ctx.moveTo(x - size, y);
+    ctx.lineTo(x - size * 0.6, y - size * 0.7);
+    ctx.lineTo(x + size * 0.4, y - size * 0.8);
+    ctx.lineTo(x + size, y - size * 0.15);
+    ctx.lineTo(x + size * 0.7, y + size * 0.25);
+    ctx.closePath();
+    ctx.fill();
   }
 
   /**
@@ -170,9 +276,19 @@ export class Renderer {
     this.ctx.scale(this.camera.zoom, this.camera.zoom);
     this.ctx.translate(-this.camera.x, -this.camera.y);
 
-    // ground
-    this.ctx.fillStyle = 'rgba(0,0,0,0.15)';
+    // ground with grass gradient
+    const groundGrad = this.ctx.createRadialGradient(
+      this.world.w / 2, this.world.h / 2, 100,
+      this.world.w / 2, this.world.h / 2, this.world.w
+    );
+    groundGrad.addColorStop(0, '#2a4a25');
+    groundGrad.addColorStop(0.5, '#1e3a1a');
+    groundGrad.addColorStop(1, '#152815');
+    this.ctx.fillStyle = groundGrad;
     this.ctx.fillRect(0, 0, this.world.w, this.world.h);
+
+    // Procedural terrain (grass, trees, rocks)
+    this.drawTerrain(now);
 
     // regions
     for (const r of REGIONS) this.drawRegion(r, now);
