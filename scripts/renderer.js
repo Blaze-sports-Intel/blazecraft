@@ -351,128 +351,358 @@ export class Renderer {
   drawRegion(region, now) {
     const ctx = this.ctx;
     const b = region.bounds;
+    const cx = b.x + b.width / 2;
+    const cy = b.y + b.height / 2;
 
-    // Building level (1-3) based on region type or can be set externally
-    const level = region.level || (region.type === 'townhall' ? 3 : region.type === 'goldmine' ? 2 : 1);
-
-    const palette = {
-      townhall: { fill: 'rgba(40,35,28,0.75)', edge: 'rgba(201,162,39,0.9)' },
-      goldmine: { fill: 'rgba(55,47,30,0.72)', edge: 'rgba(201,162,39,0.85)' },
-      lumber: { fill: 'rgba(35,48,34,0.62)', edge: 'rgba(212,160,23,0.75)' },
-      ground: { fill: 'rgba(36,35,33,0.55)', edge: 'rgba(139,115,32,0.65)' },
-    }[region.type];
-
-    // shadow
-    ctx.save();
-    ctx.fillStyle = 'rgba(0,0,0,0.45)';
-    ctx.fillRect(b.x + 5, b.y + 6, b.width, b.height);
-    ctx.restore();
-
-    // fill
-    ctx.save();
-    ctx.fillStyle = palette.fill;
-    ctx.fillRect(b.x, b.y, b.width, b.height);
-
-    // texture - Level 1: Base stone texture
-    if (this.texStone) {
-      const pat = ctx.createPattern(this.texStone, 'repeat');
-      if (pat) {
-        ctx.globalAlpha = 0.08 + (level * 0.02); // More visible at higher levels
-        ctx.fillStyle = pat;
-        ctx.fillRect(b.x, b.y, b.width, b.height);
-        ctx.globalAlpha = 1;
-      }
-    }
-
-    // Level 2+: Gold corner flourishes
-    if (level >= 2) {
-      const cornerSize = 12;
-      ctx.strokeStyle = 'rgba(201,162,39,0.9)';
-      ctx.lineWidth = 3;
-
-      // Top-left corner
-      ctx.beginPath();
-      ctx.moveTo(b.x + cornerSize, b.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.lineTo(b.x, b.y + cornerSize);
-      ctx.stroke();
-
-      // Top-right corner
-      ctx.beginPath();
-      ctx.moveTo(b.x + b.width - cornerSize, b.y);
-      ctx.lineTo(b.x + b.width, b.y);
-      ctx.lineTo(b.x + b.width, b.y + cornerSize);
-      ctx.stroke();
-
-      // Bottom-left corner
-      ctx.beginPath();
-      ctx.moveTo(b.x, b.y + b.height - cornerSize);
-      ctx.lineTo(b.x, b.y + b.height);
-      ctx.lineTo(b.x + cornerSize, b.y + b.height);
-      ctx.stroke();
-
-      // Bottom-right corner
-      ctx.beginPath();
-      ctx.moveTo(b.x + b.width - cornerSize, b.y + b.height);
-      ctx.lineTo(b.x + b.width, b.y + b.height);
-      ctx.lineTo(b.x + b.width, b.y + b.height - cornerSize);
-      ctx.stroke();
-    }
-
-    // Level 3: Full gold border with inner glow
-    if (level >= 3) {
-      // Inner glow
-      const glowGrad = ctx.createLinearGradient(b.x, b.y, b.x + b.width, b.y + b.height);
-      glowGrad.addColorStop(0, 'rgba(201,162,39,0.15)');
-      glowGrad.addColorStop(0.5, 'rgba(201,162,39,0.25)');
-      glowGrad.addColorStop(1, 'rgba(201,162,39,0.15)');
-      ctx.fillStyle = glowGrad;
-      ctx.fillRect(b.x + 4, b.y + 4, b.width - 8, b.height - 8);
-
-      // Full gold border
-      ctx.strokeStyle = 'rgba(201,162,39,0.95)';
-      ctx.lineWidth = 3;
-      ctx.strokeRect(b.x, b.y, b.width, b.height);
-
-      // Pulsing glow effect
-      const pulse = Math.sin(now / 1000) * 0.3 + 0.7;
-      ctx.shadowColor = `rgba(201,162,39,${pulse * 0.5})`;
-      ctx.shadowBlur = 12;
-      ctx.strokeRect(b.x, b.y, b.width, b.height);
-      ctx.shadowBlur = 0;
+    // Draw isometric building based on region type
+    if (region.type === 'townhall') {
+      this.drawTownHall(ctx, cx, cy, b.width, b.height, now, region.name);
+    } else if (region.type === 'goldmine') {
+      this.drawGoldMine(ctx, cx, cy, b.width, b.height, now, region.name);
+    } else if (region.type === 'lumber') {
+      this.drawLumberMill(ctx, cx, cy, b.width, b.height, now, region.name);
     } else {
-      // Standard bevel edge for Level 1-2
-      ctx.strokeStyle = palette.edge;
-      ctx.lineWidth = 2;
-      ctx.strokeRect(b.x, b.y, b.width, b.height);
+      this.drawBarracks(ctx, cx, cy, b.width, b.height, now, region.name);
     }
-
-    // inner edge
-    ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-    ctx.lineWidth = 2;
-    ctx.strokeRect(b.x + 2, b.y + 2, b.width - 4, b.height - 4);
-
-    // label
-    ctx.font = '16px Cinzel, serif';
-    ctx.fillStyle = 'rgba(232,220,196,0.92)';
-    ctx.shadowColor = 'rgba(0,0,0,0.8)';
-    ctx.shadowBlur = 6;
-    ctx.fillText(region.name, b.x + 12, b.y + 24);
-
-    ctx.restore();
 
     // activity sparkle
     const last = this.regionActivity.get(region.id) || 0;
     const age = Date.now() - last;
     if (last && age < 5000) {
-      const t = (now / 1000) % 1;
+      const pulse = Math.sin(now / 200) * 0.4 + 0.6;
       ctx.save();
-      ctx.globalAlpha = (1 - age / 5000) * 0.8;
-      ctx.strokeStyle = 'rgba(74,156,45,0.85)';
-      ctx.lineWidth = 2;
-      ctx.strokeRect(b.x + 4 + t * 6, b.y + 4 + t * 6, b.width - 8 - t * 12, b.height - 8 - t * 12);
+      ctx.globalAlpha = (1 - age / 5000) * pulse;
+      ctx.strokeStyle = 'rgba(74,156,45,0.95)';
+      ctx.lineWidth = 3;
+      ctx.strokeRect(b.x - 5, b.y - 5, b.width + 10, b.height + 10);
       ctx.restore();
     }
+  }
+
+  // Isometric Town Hall - Main command center
+  drawTownHall(ctx, cx, cy, w, h, now, name) {
+    const baseW = Math.min(w * 0.85, 120);
+    const baseH = baseW * 0.6;
+    const roofH = baseW * 0.5;
+
+    ctx.save();
+
+    // Building shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.4)';
+    ctx.beginPath();
+    ctx.ellipse(cx + 8, cy + baseH * 0.4, baseW * 0.55, baseH * 0.3, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Base platform
+    ctx.fillStyle = '#4a4035';
+    ctx.beginPath();
+    ctx.moveTo(cx - baseW * 0.55, cy);
+    ctx.lineTo(cx, cy + baseH * 0.35);
+    ctx.lineTo(cx + baseW * 0.55, cy);
+    ctx.lineTo(cx, cy - baseH * 0.35);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#6b5d4a';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Main building body - left face
+    ctx.fillStyle = '#3d3428';
+    ctx.beginPath();
+    ctx.moveTo(cx - baseW * 0.45, cy - baseH * 0.15);
+    ctx.lineTo(cx - baseW * 0.45, cy - roofH);
+    ctx.lineTo(cx, cy - roofH - baseH * 0.2);
+    ctx.lineTo(cx, cy + baseH * 0.15);
+    ctx.closePath();
+    ctx.fill();
+
+    // Main building body - right face
+    ctx.fillStyle = '#524838';
+    ctx.beginPath();
+    ctx.moveTo(cx + baseW * 0.45, cy - baseH * 0.15);
+    ctx.lineTo(cx + baseW * 0.45, cy - roofH);
+    ctx.lineTo(cx, cy - roofH - baseH * 0.2);
+    ctx.lineTo(cx, cy + baseH * 0.15);
+    ctx.closePath();
+    ctx.fill();
+
+    // Roof - gold trim
+    const pulse = Math.sin(now / 1500) * 0.15 + 0.85;
+    ctx.fillStyle = `rgba(180,140,60,${pulse})`;
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - roofH - baseH * 0.5);
+    ctx.lineTo(cx - baseW * 0.55, cy - roofH + baseH * 0.1);
+    ctx.lineTo(cx, cy - roofH + baseH * 0.3);
+    ctx.lineTo(cx + baseW * 0.55, cy - roofH + baseH * 0.1);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#D4AF37';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Banner/flag
+    const flagSway = Math.sin(now / 400) * 3;
+    ctx.fillStyle = '#8B0000';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - roofH - baseH * 0.5);
+    ctx.lineTo(cx, cy - roofH - baseH * 0.9);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - roofH - baseH * 0.9);
+    ctx.lineTo(cx + 15 + flagSway, cy - roofH - baseH * 0.8);
+    ctx.lineTo(cx + flagSway * 0.5, cy - roofH - baseH * 0.7);
+    ctx.closePath();
+    ctx.fill();
+
+    // Door
+    ctx.fillStyle = '#2a1f15';
+    ctx.fillRect(cx - 8, cy - baseH * 0.1, 16, baseH * 0.35);
+    ctx.strokeStyle = '#D4AF37';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(cx - 8, cy - baseH * 0.1, 16, baseH * 0.35);
+
+    // Windows with glow
+    ctx.fillStyle = `rgba(255,200,100,${0.5 + Math.sin(now / 800) * 0.3})`;
+    ctx.fillRect(cx - baseW * 0.3, cy - roofH + baseH * 0.2, 8, 10);
+    ctx.fillRect(cx + baseW * 0.2, cy - roofH + baseH * 0.2, 8, 10);
+
+    // Name label
+    ctx.font = 'bold 13px Cinzel, serif';
+    ctx.fillStyle = '#D4AF37';
+    ctx.textAlign = 'center';
+    ctx.shadowColor = 'rgba(0,0,0,0.9)';
+    ctx.shadowBlur = 4;
+    ctx.fillText(name, cx, cy + baseH * 0.55);
+
+    ctx.restore();
+  }
+
+  // Isometric Gold Mine
+  drawGoldMine(ctx, cx, cy, w, h, now, name) {
+    const baseW = Math.min(w * 0.75, 100);
+    const baseH = baseW * 0.5;
+
+    ctx.save();
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(cx + 6, cy + baseH * 0.3, baseW * 0.5, baseH * 0.25, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Mine entrance - rock formation
+    ctx.fillStyle = '#4a4a4a';
+    ctx.beginPath();
+    ctx.moveTo(cx - baseW * 0.4, cy);
+    ctx.lineTo(cx - baseW * 0.3, cy - baseH * 0.8);
+    ctx.lineTo(cx, cy - baseH);
+    ctx.lineTo(cx + baseW * 0.3, cy - baseH * 0.85);
+    ctx.lineTo(cx + baseW * 0.4, cy - baseH * 0.3);
+    ctx.lineTo(cx + baseW * 0.35, cy + baseH * 0.15);
+    ctx.lineTo(cx - baseW * 0.35, cy + baseH * 0.15);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#6a6a6a';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Dark mine entrance
+    ctx.fillStyle = '#1a1a1a';
+    ctx.beginPath();
+    ctx.ellipse(cx, cy - baseH * 0.1, baseW * 0.2, baseH * 0.25, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Gold nuggets
+    const goldPulse = Math.sin(now / 600) * 0.3 + 0.7;
+    ctx.fillStyle = `rgba(255,215,0,${goldPulse})`;
+    ctx.beginPath();
+    ctx.arc(cx - baseW * 0.25, cy - baseH * 0.5, 6, 0, Math.PI * 2);
+    ctx.arc(cx + baseW * 0.15, cy - baseH * 0.6, 5, 0, Math.PI * 2);
+    ctx.arc(cx - baseW * 0.1, cy - baseH * 0.3, 4, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Sparkles
+    const sparkT = (now / 300) % 1;
+    ctx.fillStyle = `rgba(255,255,200,${1 - sparkT})`;
+    ctx.beginPath();
+    ctx.arc(cx - baseW * 0.2 + sparkT * 10, cy - baseH * 0.4 - sparkT * 15, 2, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Name label
+    ctx.font = 'bold 12px Cinzel, serif';
+    ctx.fillStyle = '#FFD700';
+    ctx.textAlign = 'center';
+    ctx.shadowColor = 'rgba(0,0,0,0.9)';
+    ctx.shadowBlur = 4;
+    ctx.fillText(name, cx, cy + baseH * 0.5);
+
+    ctx.restore();
+  }
+
+  // Isometric Lumber Mill
+  drawLumberMill(ctx, cx, cy, w, h, now, name) {
+    const baseW = Math.min(w * 0.8, 110);
+    const baseH = baseW * 0.55;
+
+    ctx.save();
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(cx + 6, cy + baseH * 0.35, baseW * 0.5, baseH * 0.25, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Log pile
+    for (let i = 0; i < 4; i++) {
+      ctx.fillStyle = i % 2 === 0 ? '#5a4030' : '#6a5040';
+      ctx.beginPath();
+      ctx.ellipse(cx - baseW * 0.35 + i * 8, cy + baseH * 0.1, 15, 5, 0.3, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.strokeStyle = '#3a2820';
+      ctx.lineWidth = 1;
+      ctx.stroke();
+    }
+
+    // Main building - wooden structure
+    ctx.fillStyle = '#5a4a35';
+    ctx.beginPath();
+    ctx.moveTo(cx - baseW * 0.35, cy - baseH * 0.1);
+    ctx.lineTo(cx - baseW * 0.35, cy - baseH * 0.7);
+    ctx.lineTo(cx, cy - baseH * 0.85);
+    ctx.lineTo(cx, cy + baseH * 0.05);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#6a5a45';
+    ctx.beginPath();
+    ctx.moveTo(cx + baseW * 0.35, cy - baseH * 0.1);
+    ctx.lineTo(cx + baseW * 0.35, cy - baseH * 0.7);
+    ctx.lineTo(cx, cy - baseH * 0.85);
+    ctx.lineTo(cx, cy + baseH * 0.05);
+    ctx.closePath();
+    ctx.fill();
+
+    // Wooden slats
+    ctx.strokeStyle = '#4a3a28';
+    ctx.lineWidth = 1;
+    for (let i = 0; i < 4; i++) {
+      ctx.beginPath();
+      ctx.moveTo(cx - baseW * 0.35, cy - baseH * 0.2 - i * 12);
+      ctx.lineTo(cx, cy - baseH * 0.05 - i * 12);
+      ctx.stroke();
+    }
+
+    // Roof
+    ctx.fillStyle = '#228B22';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - baseH * 1.1);
+    ctx.lineTo(cx - baseW * 0.45, cy - baseH * 0.65);
+    ctx.lineTo(cx, cy - baseH * 0.55);
+    ctx.lineTo(cx + baseW * 0.45, cy - baseH * 0.65);
+    ctx.closePath();
+    ctx.fill();
+    ctx.strokeStyle = '#1a6b1a';
+    ctx.lineWidth = 2;
+    ctx.stroke();
+
+    // Saw animation
+    const sawAngle = (now / 200) % (Math.PI * 2);
+    ctx.save();
+    ctx.translate(cx + baseW * 0.25, cy - baseH * 0.3);
+    ctx.rotate(sawAngle);
+    ctx.fillStyle = '#888';
+    ctx.beginPath();
+    ctx.arc(0, 0, 12, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = '#666';
+    ctx.lineWidth = 2;
+    for (let i = 0; i < 8; i++) {
+      ctx.beginPath();
+      ctx.moveTo(10, 0);
+      ctx.lineTo(14, 0);
+      ctx.stroke();
+      ctx.rotate(Math.PI / 4);
+    }
+    ctx.restore();
+
+    // Name label
+    ctx.font = 'bold 12px Cinzel, serif';
+    ctx.fillStyle = '#90EE90';
+    ctx.textAlign = 'center';
+    ctx.shadowColor = 'rgba(0,0,0,0.9)';
+    ctx.shadowBlur = 4;
+    ctx.fillText(name, cx, cy + baseH * 0.55);
+
+    ctx.restore();
+  }
+
+  // Isometric Barracks (default building)
+  drawBarracks(ctx, cx, cy, w, h, now, name) {
+    const baseW = Math.min(w * 0.75, 100);
+    const baseH = baseW * 0.5;
+
+    ctx.save();
+
+    // Shadow
+    ctx.fillStyle = 'rgba(0,0,0,0.35)';
+    ctx.beginPath();
+    ctx.ellipse(cx + 5, cy + baseH * 0.3, baseW * 0.45, baseH * 0.22, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Foundation
+    ctx.fillStyle = '#3d3832';
+    ctx.beginPath();
+    ctx.moveTo(cx - baseW * 0.45, cy);
+    ctx.lineTo(cx, cy + baseH * 0.25);
+    ctx.lineTo(cx + baseW * 0.45, cy);
+    ctx.lineTo(cx, cy - baseH * 0.25);
+    ctx.closePath();
+    ctx.fill();
+
+    // Main walls
+    ctx.fillStyle = '#4a4540';
+    ctx.beginPath();
+    ctx.moveTo(cx - baseW * 0.4, cy - baseH * 0.05);
+    ctx.lineTo(cx - baseW * 0.4, cy - baseH * 0.6);
+    ctx.lineTo(cx, cy - baseH * 0.45);
+    ctx.lineTo(cx, cy + baseH * 0.1);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.fillStyle = '#5a5550';
+    ctx.beginPath();
+    ctx.moveTo(cx + baseW * 0.4, cy - baseH * 0.05);
+    ctx.lineTo(cx + baseW * 0.4, cy - baseH * 0.6);
+    ctx.lineTo(cx, cy - baseH * 0.45);
+    ctx.lineTo(cx, cy + baseH * 0.1);
+    ctx.closePath();
+    ctx.fill();
+
+    // Flat roof
+    ctx.fillStyle = '#5d5550';
+    ctx.beginPath();
+    ctx.moveTo(cx - baseW * 0.45, cy - baseH * 0.6);
+    ctx.lineTo(cx, cy - baseH * 0.45);
+    ctx.lineTo(cx + baseW * 0.45, cy - baseH * 0.6);
+    ctx.lineTo(cx, cy - baseH * 0.75);
+    ctx.closePath();
+    ctx.fill();
+
+    // Crenellations
+    ctx.fillStyle = '#4a4540';
+    for (let i = 0; i < 3; i++) {
+      ctx.fillRect(cx - baseW * 0.35 + i * 18, cy - baseH * 0.75, 8, 10);
+    }
+
+    // Name label
+    ctx.font = 'bold 11px Cinzel, serif';
+    ctx.fillStyle = '#E8DCC4';
+    ctx.textAlign = 'center';
+    ctx.shadowColor = 'rgba(0,0,0,0.9)';
+    ctx.shadowBlur = 4;
+    ctx.fillText(name, cx, cy + baseH * 0.5);
+
+    ctx.restore();
   }
 
   drawWorker(worker, selected, now) {
@@ -480,157 +710,223 @@ export class Renderer {
     const x = worker.position.x;
     const y = worker.position.y;
 
-    const colors = {
-      idle: 'rgba(232,220,196,0.65)',
-      moving: 'rgba(232,220,196,0.92)',
-      working: 'rgba(74,156,45,0.95)',
-      blocked: 'rgba(139,26,26,0.95)',
-      complete: 'rgba(74,156,45,0.95)',
-      terminated: 'rgba(110,110,110,0.55)',
-      hold: 'rgba(212,160,23,0.95)',
-    }[worker.status] || 'rgba(232,220,196,0.9)';
+    const bob = Math.sin((now / 250) + (x + y) * 0.01) * 1.2;
+    const walkCycle = Math.sin((now / 150) + (x + y) * 0.02);
 
-    const bob = Math.sin((now / 250) + (x + y) * 0.01) * 1.6;
-
-    // selection ring
+    // Selection circle on ground
     if (selected) {
       ctx.save();
       ctx.beginPath();
-      ctx.strokeStyle = 'rgba(201,162,39,0.95)';
-      ctx.lineWidth = 3;
-      ctx.arc(x, y + bob, 14, 0, Math.PI * 2);
-      ctx.stroke();
-      ctx.restore();
-    }
-
-    // unit
-    ctx.save();
-    ctx.beginPath();
-    ctx.fillStyle = colors;
-    ctx.arc(x, y + bob, 7.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    // status pip
-    ctx.beginPath();
-    ctx.fillStyle = 'rgba(0,0,0,0.55)';
-    ctx.arc(x + 6.5, y + bob - 6.5, 3.5, 0, Math.PI * 2);
-    ctx.fill();
-
-    const pip = worker.status === 'working' ? 'rgba(74,156,45,1)' :
-      worker.status === 'blocked' ? 'rgba(139,26,26,1)' :
-      worker.status === 'hold' ? 'rgba(212,160,23,1)' :
-      'rgba(232,220,196,0.95)';
-
-    ctx.beginPath();
-    ctx.fillStyle = pip;
-    ctx.arc(x + 6.5, y + bob - 6.5, 2, 0, Math.PI * 2);
-    ctx.fill();
-
-    // working sparks
-    if (worker.status === 'working') {
-      ctx.strokeStyle = 'rgba(201,162,39,0.75)';
+      const selPulse = Math.sin(now / 400) * 0.15 + 0.85;
+      ctx.strokeStyle = `rgba(201,162,39,${selPulse})`;
       ctx.lineWidth = 2;
-      const t = (now / 120) % 1;
-      ctx.beginPath();
-      ctx.moveTo(x - 10, y + bob - 6);
-      ctx.lineTo(x - 4 - t * 6, y + bob - 2);
+      ctx.ellipse(x, y + 8, 16, 8, 0, 0, Math.PI * 2);
       ctx.stroke();
-    }
-
-    // hold: Pause icon pulsing
-    if (worker.status === 'hold') {
-      const pulse = Math.sin(now / 300) * 0.3 + 0.7;
-      ctx.save();
-      ctx.globalAlpha = pulse;
-      ctx.fillStyle = 'rgba(212,160,23,0.95)';
-
-      // Pause bars
-      const barWidth = 3;
-      const barHeight = 10;
-      const gap = 4;
-      ctx.fillRect(x - gap / 2 - barWidth, y + bob - barHeight / 2 - 14, barWidth, barHeight);
-      ctx.fillRect(x + gap / 2, y + bob - barHeight / 2 - 14, barWidth, barHeight);
-
-      // Glow effect
-      ctx.shadowColor = 'rgba(212,160,23,0.6)';
-      ctx.shadowBlur = 8;
-      ctx.fillRect(x - gap / 2 - barWidth, y + bob - barHeight / 2 - 14, barWidth, barHeight);
-      ctx.fillRect(x + gap / 2, y + bob - barHeight / 2 - 14, barWidth, barHeight);
-      ctx.restore();
-    }
-
-    // blocked: Exclamation with shake
-    if (worker.status === 'blocked') {
-      const shake = Math.sin(now / 50) * 2; // Fast shake
-
-      ctx.save();
-      ctx.translate(shake, 0);
-
-      // Distress ring
-      ctx.strokeStyle = 'rgba(139,26,26,0.8)';
-      ctx.lineWidth = 2;
-      ctx.beginPath();
-      ctx.arc(x, y + bob, 12, 0, Math.PI * 2);
-      ctx.stroke();
-
-      // Exclamation mark
-      ctx.fillStyle = 'rgba(139,26,26,0.95)';
-      ctx.font = 'bold 14px sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText('!', x, y + bob - 16);
-
-      ctx.restore();
-    }
-
-    // complete: Checkmark that fades
-    if (worker.status === 'complete') {
-      // Calculate fade based on when status changed (use updatedAt if available)
-      const completeDuration = 3000; // Fade over 3 seconds
-      const statusAge = worker.updatedAt ? (Date.now() - worker.updatedAt) : 0;
-      const fadeAlpha = Math.max(0, 1 - statusAge / completeDuration);
-
-      ctx.save();
-      ctx.globalAlpha = fadeAlpha * 0.95;
-
-      // Green glow background
-      ctx.fillStyle = 'rgba(74,156,45,0.3)';
-      ctx.beginPath();
-      ctx.arc(x, y + bob - 14, 8, 0, Math.PI * 2);
+      ctx.fillStyle = 'rgba(201,162,39,0.15)';
       ctx.fill();
+      ctx.restore();
+    }
 
+    // Shadow
+    ctx.save();
+    ctx.fillStyle = 'rgba(0,0,0,0.3)';
+    ctx.beginPath();
+    ctx.ellipse(x, y + 6, 8, 4, 0, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+
+    // Draw character sprite
+    this.drawCharacterSprite(ctx, x, y + bob, worker.status, now, walkCycle);
+
+    // Status indicators above head
+    this.drawStatusIndicator(ctx, x, y + bob, worker.status, now);
+
+    // Nameplate
+    ctx.save();
+    ctx.font = 'bold 11px Cinzel, serif';
+    ctx.textAlign = 'center';
+    ctx.fillStyle = selected ? '#D4AF37' : 'rgba(232,220,196,0.9)';
+    ctx.shadowColor = 'rgba(0,0,0,0.95)';
+    ctx.shadowBlur = 4;
+    ctx.fillText(worker.name, x, y + bob + 28);
+    ctx.restore();
+  }
+
+  // Draw a WC3-style character sprite
+  drawCharacterSprite(ctx, x, y, status, now, walkCycle) {
+    ctx.save();
+
+    // Color palette based on status
+    const palette = {
+      idle: { body: '#4a6fa5', trim: '#6b8fc5', skin: '#e8c8a8' },
+      moving: { body: '#4a6fa5', trim: '#8bb0e5', skin: '#e8c8a8' },
+      working: { body: '#2d7a4f', trim: '#4ca870', skin: '#e8c8a8' },
+      blocked: { body: '#8b3030', trim: '#b54545', skin: '#d8a888' },
+      complete: { body: '#8b7d30', trim: '#b5a545', skin: '#e8c8a8' },
+      terminated: { body: '#5a5a5a', trim: '#7a7a7a', skin: '#a8a8a8' },
+      hold: { body: '#8b6b30', trim: '#b59545', skin: '#e8c8a8' },
+    }[status] || { body: '#4a6fa5', trim: '#6b8fc5', skin: '#e8c8a8' };
+
+    const isWorking = status === 'working';
+    const isMoving = status === 'moving';
+    const armSwing = isWorking ? Math.sin(now / 100) * 0.5 : (isMoving ? walkCycle * 0.3 : 0);
+
+    // Feet
+    ctx.fillStyle = '#3a2a1a';
+    ctx.beginPath();
+    ctx.ellipse(x - 4 + (isMoving ? walkCycle * 2 : 0), y + 2, 4, 2, 0, 0, Math.PI * 2);
+    ctx.ellipse(x + 4 - (isMoving ? walkCycle * 2 : 0), y + 2, 4, 2, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Legs
+    ctx.strokeStyle = palette.body;
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(x - 3, y - 5);
+    ctx.lineTo(x - 4 + (isMoving ? walkCycle * 2 : 0), y + 1);
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(x + 3, y - 5);
+    ctx.lineTo(x + 4 - (isMoving ? walkCycle * 2 : 0), y + 1);
+    ctx.stroke();
+
+    // Body/torso
+    ctx.fillStyle = palette.body;
+    ctx.beginPath();
+    // Rounded rectangle for body
+    const bx = x - 6, by = y - 16, bw = 12, bh = 14, br = 3;
+    ctx.moveTo(bx + br, by);
+    ctx.lineTo(bx + bw - br, by);
+    ctx.quadraticCurveTo(bx + bw, by, bx + bw, by + br);
+    ctx.lineTo(bx + bw, by + bh - br);
+    ctx.quadraticCurveTo(bx + bw, by + bh, bx + bw - br, by + bh);
+    ctx.lineTo(bx + br, by + bh);
+    ctx.quadraticCurveTo(bx, by + bh, bx, by + bh - br);
+    ctx.lineTo(bx, by + br);
+    ctx.quadraticCurveTo(bx, by, bx + br, by);
+    ctx.closePath();
+    ctx.fill();
+
+    // Trim/belt
+    ctx.fillStyle = palette.trim;
+    ctx.fillRect(x - 6, y - 8, 12, 3);
+
+    // Arms
+    ctx.strokeStyle = palette.body;
+    ctx.lineWidth = 4;
+    // Left arm
+    ctx.beginPath();
+    ctx.moveTo(x - 6, y - 13);
+    ctx.lineTo(x - 10 - armSwing * 8, y - 6 + Math.abs(armSwing) * 4);
+    ctx.stroke();
+    // Right arm
+    ctx.beginPath();
+    ctx.moveTo(x + 6, y - 13);
+    ctx.lineTo(x + 10 + armSwing * 8, y - 6 + Math.abs(armSwing) * 4);
+    ctx.stroke();
+
+    // Tool for working status
+    if (isWorking) {
+      ctx.strokeStyle = '#8B4513';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.moveTo(x + 10 + armSwing * 8, y - 6 + Math.abs(armSwing) * 4);
+      ctx.lineTo(x + 14 + armSwing * 12, y - 14);
+      ctx.stroke();
+      // Tool head
+      ctx.fillStyle = '#888';
+      ctx.fillRect(x + 12 + armSwing * 12, y - 18, 6, 6);
+    }
+
+    // Head
+    ctx.fillStyle = palette.skin;
+    ctx.beginPath();
+    ctx.arc(x, y - 20, 6, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Hair/helmet
+    ctx.fillStyle = status === 'working' ? '#4a3020' : '#2a2a3a';
+    ctx.beginPath();
+    ctx.arc(x, y - 22, 5, Math.PI, Math.PI * 2);
+    ctx.fill();
+
+    // Eyes
+    ctx.fillStyle = '#1a1a1a';
+    ctx.beginPath();
+    ctx.arc(x - 2, y - 20, 1, 0, Math.PI * 2);
+    ctx.arc(x + 2, y - 20, 1, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.restore();
+  }
+
+  // Draw status indicator above worker
+  drawStatusIndicator(ctx, x, y, status, now) {
+    ctx.save();
+
+    if (status === 'working') {
+      // Sparkles/work effect
+      const t = (now / 150) % 1;
+      ctx.fillStyle = `rgba(201,162,39,${0.8 - t * 0.6})`;
+      ctx.beginPath();
+      ctx.arc(x - 8 + t * 4, y - 28 - t * 8, 2, 0, Math.PI * 2);
+      ctx.arc(x + 6 - t * 3, y - 30 - t * 6, 1.5, 0, Math.PI * 2);
+      ctx.fill();
+    }
+
+    if (status === 'hold') {
+      const pulse = Math.sin(now / 300) * 0.3 + 0.7;
+      ctx.globalAlpha = pulse;
+      ctx.fillStyle = '#D4A017';
+      // Pause icon
+      ctx.fillRect(x - 5, y - 38, 3, 8);
+      ctx.fillRect(x + 2, y - 38, 3, 8);
+      ctx.shadowColor = 'rgba(212,160,23,0.6)';
+      ctx.shadowBlur = 6;
+      ctx.fillRect(x - 5, y - 38, 3, 8);
+      ctx.fillRect(x + 2, y - 38, 3, 8);
+    }
+
+    if (status === 'blocked') {
+      const shake = Math.sin(now / 50) * 2;
+      ctx.translate(shake, 0);
+      // Red exclamation
+      ctx.fillStyle = '#c0392b';
+      ctx.font = 'bold 16px sans-serif';
+      ctx.textAlign = 'center';
+      ctx.shadowColor = 'rgba(0,0,0,0.8)';
+      ctx.shadowBlur = 4;
+      ctx.fillText('!', x, y - 32);
+      // Warning ring
+      ctx.strokeStyle = 'rgba(192,57,43,0.7)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.arc(x, y - 36, 10, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    if (status === 'complete') {
+      const fadeT = (now / 2000) % 1;
+      ctx.globalAlpha = 1 - fadeT * 0.5;
       // Checkmark
-      ctx.strokeStyle = 'rgba(74,156,45,0.95)';
-      ctx.lineWidth = 2.5;
+      ctx.strokeStyle = '#27ae60';
+      ctx.lineWidth = 3;
       ctx.lineCap = 'round';
       ctx.lineJoin = 'round';
       ctx.beginPath();
-      ctx.moveTo(x - 5, y + bob - 14);
-      ctx.lineTo(x - 1, y + bob - 10);
-      ctx.lineTo(x + 6, y + bob - 18);
+      ctx.moveTo(x - 6, y - 34);
+      ctx.lineTo(x - 1, y - 29);
+      ctx.lineTo(x + 7, y - 39);
       ctx.stroke();
-
-      // Rising sparkle effect
-      if (fadeAlpha > 0.5) {
-        const sparkleY = y + bob - 20 - (1 - fadeAlpha) * 20;
-        ctx.fillStyle = `rgba(74,156,45,${fadeAlpha * 0.6})`;
-        ctx.beginPath();
-        ctx.arc(x - 3, sparkleY, 2, 0, Math.PI * 2);
-        ctx.arc(x + 4, sparkleY - 3, 1.5, 0, Math.PI * 2);
-        ctx.fill();
-      }
-
-      ctx.restore();
+      // Rising particles
+      ctx.fillStyle = `rgba(39,174,96,${0.7 - fadeT})`;
+      ctx.beginPath();
+      ctx.arc(x - 4, y - 38 - fadeT * 15, 2, 0, Math.PI * 2);
+      ctx.arc(x + 5, y - 40 - fadeT * 12, 1.5, 0, Math.PI * 2);
+      ctx.fill();
     }
 
-    ctx.restore();
-
-    // nameplate
-    ctx.save();
-    ctx.font = '12px Crimson Text, serif';
-    ctx.fillStyle = 'rgba(232,220,196,0.8)';
-    ctx.shadowColor = 'rgba(0,0,0,0.9)';
-    ctx.shadowBlur = 6;
-    ctx.fillText(worker.name, x - 18, y + bob + 24);
     ctx.restore();
   }
 
