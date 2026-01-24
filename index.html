@@ -40,42 +40,44 @@
 
   <div id="app" aria-label="BlazeCraft">
 
-    <!-- WC3 Resource Bar (Top) -->
+    <!-- WC3 Resource Bar (Top) - Task-focused metrics -->
     <header id="topbar" class="panel wc3-resource-bar" role="banner">
       <div class="topbar-left">
-        <div class="brand">
-          <a class="brand-mark" href="https://blazesportsintel.com/" target="_blank" rel="noopener" aria-label="Open Blaze Sports Intel">
-            <img class="brand-logo" src="images/blazecraft-logo.svg" alt="BlazeCraft" width="32" height="36" />
-          </a>
+        <!-- Task Metrics - Primary stats display -->
+        <div class="wc3-task-metrics" role="group" aria-label="Task Metrics">
+          <div class="wc3-metric" title="Tasks Completed">
+            <span class="wc3-metric-ico tasks" aria-hidden="true">🪙</span>
+            <span class="wc3-metric-label">Tasks Completed:</span>
+            <span id="resCompleted" class="wc3-metric-num">0</span>
+          </div>
+          <div class="wc3-metric" title="Files Modified">
+            <span class="wc3-metric-ico files" aria-hidden="true">📄</span>
+            <span class="wc3-metric-label">Files Modified:</span>
+            <span id="resFiles" class="wc3-metric-num">0</span>
+          </div>
+          <div class="wc3-metric" title="Active Workers">
+            <span class="wc3-metric-ico workers" aria-hidden="true">⚡</span>
+            <span class="wc3-metric-label">Active Workers:</span>
+            <span id="resWorkers" class="wc3-metric-num">0</span>
+          </div>
+          <div class="wc3-metric wc3-metric-failed" title="Failed Tasks">
+            <span class="wc3-metric-ico failed" aria-hidden="true">👹</span>
+            <span class="wc3-metric-label">Failed Tasks:</span>
+            <span id="resFailed" class="wc3-metric-num">00</span>
+          </div>
+          <div class="wc3-metric" title="Tokens Spent">
+            <span class="wc3-metric-ico tokens" aria-hidden="true">💰</span>
+            <span class="wc3-metric-label">Tokens Spent:</span>
+            <span id="resTokens" class="wc3-metric-num">0</span>
+          </div>
         </div>
+      </div>
 
-        <!-- WC3 Resources: Gold, Lumber, Food, Upkeep -->
-        <div class="wc3-resources" role="group" aria-label="Resources">
-          <div class="wc3-res" title="Gold (API Requests/min)">
-            <span class="wc3-res-ico gold" aria-hidden="true"></span>
-            <span id="resGold" class="wc3-res-num">0</span>
-          </div>
-          <div class="wc3-res" title="Lumber (Cache Hit Rate %)">
-            <span class="wc3-res-ico lumber" aria-hidden="true"></span>
-            <span id="resLumber" class="wc3-res-num">0</span>
-            <span class="wc3-res-cap">%</span>
-          </div>
-          <div class="wc3-res" title="Food (Active Connections)">
-            <span class="wc3-res-ico food" aria-hidden="true"></span>
-            <span id="resFood" class="wc3-res-num">0</span>
-            <span class="wc3-res-cap">/</span>
-            <span id="resFoodMax" class="wc3-res-num">50</span>
-          </div>
-          <div class="wc3-res wc3-res-upkeep" title="Upkeep (Error Rate)">
-            <span class="wc3-res-label">Upkeep</span>
-            <span id="resUpkeep" class="wc3-res-num upkeep-low">Low</span>
-          </div>
-        </div>
-
-        <button id="idleAlert" class="idle-alert" type="button" aria-live="polite" hidden>
-          <span class="idle-alert-dot" aria-hidden="true"></span>
-          <span class="idle-alert-text">Idle</span>
-          <span id="idleAlertCount" class="idle-alert-count">0</span>
+      <div class="topbar-center">
+        <button id="idleAlert" class="idle-alert-enhanced" type="button" aria-live="polite" hidden>
+          <span class="idle-alert-icon" aria-hidden="true">😴</span>
+          <span class="idle-alert-label">Idle Workers:</span>
+          <span id="idleAlertCount" class="idle-alert-num">0</span>
         </button>
       </div>
 
@@ -117,23 +119,43 @@
       </aside>
     </div>
 
-    <!-- WC3 Bottom HUD -->
-    <section id="bottomHud" class="panel wc3-hud-bottom" aria-label="Bottom HUD">
+    <!-- WC3 Bottom HUD - Enhanced Layout -->
+    <section id="bottomHud" class="panel wc3-hud-bottom-enhanced" aria-label="Bottom HUD">
 
-      <!-- Portrait Panel - Enhanced WC3 Style -->
-      <div class="wc3-portrait-panel">
-        <div class="wc3-portrait-enhanced" aria-hidden="true">
-          <div class="wc3-portrait-inner">
-            <div id="portraitIcon" class="wc3-portrait-icon">?</div>
+      <!-- Portrait Panel - Enhanced WC3 Style with Ornate Frame -->
+      <div class="wc3-portrait-panel-enhanced">
+        <div class="wc3-portrait-frame-ornate">
+          <div class="wc3-portrait-frame-ring"></div>
+          <div class="wc3-portrait-frame-inner">
+            <div id="portraitAvatar" class="wc3-portrait-avatar">
+              <div id="portraitIcon" class="wc3-portrait-icon-img">🤖</div>
+            </div>
+          </div>
+          <div class="wc3-portrait-frame-corners"></div>
+        </div>
+        <div class="wc3-portrait-details">
+          <div id="portraitName" class="wc3-portrait-name-large">Subagent-7</div>
+          <div id="portraitTask" class="wc3-portrait-task">Refactoring src/utils</div>
+          <div class="wc3-progress-bar-container">
+            <div class="wc3-progress-bar">
+              <div id="portraitMeter" class="wc3-progress-fill" style="width: 45%"></div>
+            </div>
+            <span id="portraitProgress" class="wc3-progress-pct">45%</span>
+          </div>
+          <div class="wc3-portrait-stats">
+            <div class="wc3-portrait-stat">
+              <span class="wc3-stat-label">Time:</span>
+              <span id="portraitElapsed" class="wc3-stat-value">00:12</span>
+            </div>
+            <div class="wc3-portrait-stat">
+              <span class="wc3-stat-label">Tokens:</span>
+              <span id="portraitTokens" class="wc3-stat-value">320</span>
+            </div>
           </div>
         </div>
-        <div class="wc3-portrait-info">
-          <div id="portraitName" class="wc3-portrait-name">No selection</div>
-          <div class="wc3-bar wc3-health-bar" aria-label="Health">
-            <div id="portraitHealth" class="wc3-bar-fill" style="width: 100%"></div>
-          </div>
-          <div id="portraitStatus" class="wc3-portrait-status">Select a worker</div>
-        </div>
+        <button id="portraitExpand" class="wc3-portrait-expand" type="button" aria-label="Expand details">
+          <span aria-hidden="true">+</span>
+        </button>
       </div>
 
       <!-- Minimap Panel -->
@@ -176,58 +198,46 @@
         </div>
       </div>
 
-      <!-- Command Grid (4x3) - Enhanced WC3 Ability Buttons -->
-      <div class="wc3-command-panel">
-        <div class="wc3-command-grid" role="group" aria-label="Commands">
-          <button class="wc3-cmd wc3-cmd-enhanced" data-cmd="stop" data-wc3-sound="click" aria-label="Stop">
-            <span class="wc3-cmd-icon" aria-hidden="true">⏹</span>
-            <span class="wc3-cmd-hotkey">S</span>
+      <!-- Command Grid (3x3) - WC3 Style with Labels -->
+      <div class="wc3-command-panel-3x3">
+        <div class="wc3-command-grid-3x3" role="group" aria-label="Commands">
+          <button class="wc3-cmd-labeled" data-cmd="stop" data-wc3-sound="click" aria-label="Stop">
+            <span class="wc3-cmd-text">Stop</span>
+            <span class="wc3-cmd-key">(S)</span>
           </button>
-          <button class="wc3-cmd wc3-cmd-enhanced" data-cmd="hold" data-wc3-sound="click" aria-label="Hold">
-            <span class="wc3-cmd-icon" aria-hidden="true">⏸</span>
-            <span class="wc3-cmd-hotkey">H</span>
+          <button class="wc3-cmd-labeled" data-cmd="hold" data-wc3-sound="click" aria-label="Hold">
+            <span class="wc3-cmd-text">Hold</span>
+            <span class="wc3-cmd-key">(H)</span>
           </button>
-          <button class="wc3-cmd wc3-cmd-enhanced" data-cmd="resume" data-wc3-sound="click" aria-label="Resume">
-            <span class="wc3-cmd-icon" aria-hidden="true">▶</span>
-            <span class="wc3-cmd-hotkey">R</span>
-          </button>
-          <button class="wc3-cmd wc3-cmd-enhanced" data-cmd="reassign" data-wc3-sound="click" aria-label="Reassign">
-            <span class="wc3-cmd-icon" aria-hidden="true">⇄</span>
-            <span class="wc3-cmd-hotkey">A</span>
+          <button class="wc3-cmd-labeled" data-cmd="resume" data-wc3-sound="click" aria-label="Resume">
+            <span class="wc3-cmd-text">Resume</span>
+            <span class="wc3-cmd-key">(R)</span>
           </button>
 
-          <button class="wc3-cmd wc3-cmd-enhanced" data-cmd="inspect" data-wc3-sound="click" aria-label="Inspect">
-            <span class="wc3-cmd-icon" aria-hidden="true">🔎</span>
-            <span class="wc3-cmd-hotkey">I</span>
+          <button class="wc3-cmd-labeled" data-cmd="reassign" data-wc3-sound="click" aria-label="Reassign">
+            <span class="wc3-cmd-text">Resume</span>
+            <span class="wc3-cmd-key">(R)</span>
           </button>
-          <button class="wc3-cmd wc3-cmd-enhanced" data-cmd="terminate" data-wc3-sound="click" aria-label="Terminate">
-            <span class="wc3-cmd-icon" aria-hidden="true">✖</span>
-            <span class="wc3-cmd-hotkey">X</span>
+          <button class="wc3-cmd-labeled" data-cmd="inspect" data-wc3-sound="click" aria-label="Reassign">
+            <span class="wc3-cmd-text">Reassign</span>
+            <span class="wc3-cmd-key">(A)</span>
           </button>
-          <button class="wc3-cmd wc3-cmd-enhanced" data-cmd="logs" data-wc3-sound="click" aria-label="View Logs">
-            <span class="wc3-cmd-icon" aria-hidden="true">📋</span>
-            <span class="wc3-cmd-hotkey">L</span>
-          </button>
-          <button class="wc3-cmd wc3-cmd-enhanced" data-cmd="files" data-wc3-sound="click" aria-label="View Files">
-            <span class="wc3-cmd-icon" aria-hidden="true">📁</span>
-            <span class="wc3-cmd-hotkey">F</span>
+          <button class="wc3-cmd-labeled" data-cmd="logs" data-wc3-sound="click" aria-label="Inspect">
+            <span class="wc3-cmd-text">Inspect</span>
+            <span class="wc3-cmd-key">(I)</span>
           </button>
 
-          <button class="wc3-cmd wc3-cmd-enhanced" data-cmd="notes" data-wc3-sound="click" aria-label="Notes">
-            <span class="wc3-cmd-icon" aria-hidden="true">💬</span>
-            <span class="wc3-cmd-hotkey">N</span>
+          <button class="wc3-cmd-labeled" data-cmd="focus" data-wc3-sound="click" aria-label="Tuntlaer">
+            <span class="wc3-cmd-text">Tuntlaer</span>
+            <span class="wc3-cmd-key">[I]</span>
           </button>
-          <button class="wc3-cmd wc3-cmd-enhanced" data-cmd="focus" data-wc3-sound="click" aria-label="Focus">
-            <span class="wc3-cmd-icon" aria-hidden="true">🎯</span>
-            <span class="wc3-cmd-hotkey">C</span>
+          <button class="wc3-cmd-labeled wc3-cmd-danger" data-cmd="terminate" data-wc3-sound="click" aria-label="Terminate">
+            <span class="wc3-cmd-text">Terminate</span>
+            <span class="wc3-cmd-key">(X)</span>
           </button>
-          <button class="wc3-cmd wc3-cmd-enhanced" data-cmd="guard" data-wc3-sound="click" aria-label="Guard">
-            <span class="wc3-cmd-icon" aria-hidden="true">🛡</span>
-            <span class="wc3-cmd-hotkey">G</span>
-          </button>
-          <button class="wc3-cmd wc3-cmd-enhanced" data-cmd="scan" data-wc3-sound="click" aria-label="Scan">
-            <span class="wc3-cmd-icon" aria-hidden="true">📡</span>
-            <span class="wc3-cmd-hotkey">Q</span>
+          <button class="wc3-cmd-labeled" data-cmd="scan" data-wc3-sound="click" aria-label="Build">
+            <span class="wc3-cmd-text">Build</span>
+            <span class="wc3-cmd-key">(B)</span>
           </button>
         </div>
       </div>
