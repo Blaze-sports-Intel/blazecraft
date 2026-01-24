@@ -3,13 +3,14 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>BlazeCraft | Blaze Sports Intel</title>
-  <meta name="description" content="BlazeCraft: RTS-style console for monitoring and controlling agent sessions." />
+  <title>BlazeCraft | Real-Time AI Agent Command Center</title>
+  <meta name="description" content="Monitor and control Claude Code sessions in real-time. BlazeCraft gives you RTS-style command over AI agents — track progress, tokens, and tasks across multiple workers." />
   <meta name="theme-color" content="#0b0b0f" />
+  <meta name="keywords" content="Claude Code, AI agents, task monitoring, developer tools, real-time dashboard" />
 
   <!-- Open Graph -->
-  <meta property="og:title" content="BlazeCraft | Blaze Sports Intel" />
-  <meta property="og:description" content="RTS-style agent visualization console. Monitor and control Claude Code sessions in real-time." />
+  <meta property="og:title" content="BlazeCraft | Real-Time AI Agent Command Center" />
+  <meta property="og:description" content="Monitor and control Claude Code sessions in real-time. Track progress, tokens, and tasks across multiple AI workers with an RTS-style command interface." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://blazecraft.app" />
 
@@ -39,6 +40,39 @@
   <div id="wc3-wisps" class="wc3-wisps-container" aria-hidden="true"></div>
 
   <div id="app" aria-label="BlazeCraft">
+
+    <!-- Welcome Overlay (first-time visitors) -->
+    <div id="welcomeOverlay" class="welcome-overlay" role="dialog" aria-labelledby="welcomeTitle" aria-modal="true">
+      <div class="welcome-card">
+        <div class="welcome-header">
+          <span class="welcome-icon" aria-hidden="true">🔥</span>
+          <h1 id="welcomeTitle" class="welcome-title">BlazeCraft</h1>
+          <p class="welcome-tagline">Real-Time AI Agent Command Center</p>
+        </div>
+        <div class="welcome-content">
+          <p class="welcome-desc">Monitor and control your Claude Code sessions with an RTS-style command interface. Track tasks, tokens, and progress across multiple AI workers in real-time.</p>
+          <div class="welcome-features">
+            <div class="welcome-feature">
+              <span class="welcome-feature-icon" aria-hidden="true">🎯</span>
+              <span class="welcome-feature-text">Track task progress in real-time</span>
+            </div>
+            <div class="welcome-feature">
+              <span class="welcome-feature-icon" aria-hidden="true">⚡</span>
+              <span class="welcome-feature-text">Monitor multiple agents at once</span>
+            </div>
+            <div class="welcome-feature">
+              <span class="welcome-feature-icon" aria-hidden="true">🎮</span>
+              <span class="welcome-feature-text">Command your workers like an RTS game</span>
+            </div>
+          </div>
+        </div>
+        <div class="welcome-actions">
+          <button id="welcomeDemo" class="btn btn-accent" type="button">Start Demo</button>
+          <button id="welcomeDismiss" class="btn btn-secondary" type="button">Skip Intro</button>
+        </div>
+        <p class="welcome-hint">Press <kbd>Esc</kbd> or click outside to close</p>
+      </div>
+    </div>
 
     <!-- WC3 Resource Bar (Top) - Task-focused metrics -->
     <header id="topbar" class="panel wc3-resource-bar" role="banner">
@@ -279,6 +313,58 @@
         `;
         container.appendChild(wisp);
       }
+    })();
+  </script>
+
+  <!-- Welcome Overlay Controller -->
+  <script>
+    (function initWelcome() {
+      const overlay = document.getElementById('welcomeOverlay');
+      if (!overlay) return;
+
+      const STORAGE_KEY = 'blazecraft_welcomed';
+      const wasWelcomed = localStorage.getItem(STORAGE_KEY) === 'true';
+
+      // Show overlay for first-time visitors
+      if (wasWelcomed) {
+        overlay.hidden = true;
+        return;
+      }
+
+      const demoBtn = document.getElementById('welcomeDemo');
+      const dismissBtn = document.getElementById('welcomeDismiss');
+
+      function closeOverlay(startDemo = false) {
+        overlay.classList.add('dismissed');
+        localStorage.setItem(STORAGE_KEY, 'true');
+
+        setTimeout(() => {
+          overlay.hidden = true;
+          if (startDemo) {
+            const toggleDemo = document.getElementById('toggleDemo');
+            if (toggleDemo && !toggleDemo.classList.contains('active')) {
+              toggleDemo.click();
+            }
+          }
+        }, 300);
+      }
+
+      demoBtn?.addEventListener('click', () => closeOverlay(true));
+      dismissBtn?.addEventListener('click', () => closeOverlay(false));
+
+      // Close on Escape key
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && !overlay.hidden) {
+          closeOverlay(false);
+        }
+      });
+
+      // Close when clicking outside the card
+      overlay.addEventListener('click', (e) => {
+        if (e.target === overlay) {
+          closeOverlay(false);
+        }
+      });
     })();
   </script>
 
