@@ -110,6 +110,17 @@ export class MockBridge {
   handleWorkerComplete(context) {
     const { worker } = context;
 
+    // Bump stats for completed task
+    this.state.bumpCompleted(1);
+    this.state.bumpFiles(Math.floor(1 + Math.random() * 3));
+
+    // Log task completion
+    this.state.pushEvent({
+      type: 'task_complete',
+      workerId: worker.id,
+      details: `${worker.name}: ${worker.currentTask || 'Task'} complete.`,
+    });
+
     // Schedule despawn
     setTimeout(() => {
       if (!this.running) return;
@@ -129,7 +140,17 @@ export class MockBridge {
    * Handle worker getting blocked
    */
   handleWorkerBlocked(context) {
-    // Could emit particles, play sound, etc.
+    const { worker } = context;
+
+    // Occasionally bump failed tasks when workers get blocked
+    if (Math.random() < 0.3) {
+      this.state.bumpFailed(1);
+      this.state.pushEvent({
+        type: 'error',
+        workerId: worker.id,
+        details: `${worker.name}: Task blocked - ${worker.errorMessage || 'conflict detected'}.`,
+      });
+    }
   }
 
   /**
@@ -288,7 +309,15 @@ export class MockBridge {
   }
 
   heartbeat() {
+    // Aggregate tokens from all workers
     this.state.tickStats();
+
+    // Increment tokens over time (simulate ongoing work)
+    for (const w of this.state.workers.values()) {
+      if (w.status === 'working') {
+        w.tokensUsed += Math.floor(10 + Math.random() * 30);
+      }
+    }
 
     // keep scout report fresh
     const idle = this.state.getIdleOrBlocked().filter((w) => w.status === 'idle').length;

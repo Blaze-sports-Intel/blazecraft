@@ -27,18 +27,72 @@ BlazeCraft provides a real-time strategy game interface for monitoring and contr
 ## Development
 
 ```bash
+# Install dependencies (for testing)
+npm install
+
 # Serve locally
-npx serve .
+npx serve . -p 8080
 
 # Or Python
-python -m http.server 8000
+python -m http.server 8080
 ```
 
-Open `http://localhost:8000` (or port 5000 for serve).
+Open `http://localhost:8080`.
+
+## Testing
+
+```bash
+# Run smoke tests
+npm test
+
+# Or run with verbose output
+npx playwright test --reporter=list
+```
+
+## Live vs Demo Mode
+
+- **Demo Mode** (default): Simulates worker activity with randomly spawning agents, task completion, and metrics updates. No external connection required.
+- **Live Mode**: Connects to BSI infrastructure for real-time monitoring. Requires the ops-bridge backend.
+
+Toggle between modes using the "Demo" button in the top-right.
+
+## Verifying Health
+
+After deployment, check these indicators:
+
+1. **Metrics Bar**: Top bar should show non-zero "Active Workers" count within a few seconds
+2. **Event Log**: Right panel should populate with spawn/task events
+3. **Ops Feed**: Bottom panel should show "Demo mode active" message
+4. **Canvas**: Map should render with moving worker dots
+
+Open browser console - there should be no errors on load.
+
+## Troubleshooting
+
+### Page loads but nothing happens
+- Check browser console for errors
+- Ensure JavaScript is enabled
+- Try hard refresh (Cmd+Shift+R or Ctrl+Shift+R)
+
+### Metrics stuck at zero
+- Verify demo mode is on (Demo button should be highlighted)
+- Wait 3-5 seconds for initial workers to spawn
+- Check that `scripts/main.js` loads without errors
+
+### Event log empty
+- Demo mode should populate events within 5 seconds
+- Check for console errors related to `game-state.js`
+
+### Commands don't work
+- Most commands require selecting a worker first (click on map)
+- "Scan" command works without selection
+- Press 'Q' for scan or click the Scan button
 
 ## Deployment
 
 Push to `main` deploys automatically via GitHub Actions to Cloudflare Pages.
+
+Tests run before deployment - if tests fail, deployment is blocked.
 
 ## Part of Blaze Sports Intel
 

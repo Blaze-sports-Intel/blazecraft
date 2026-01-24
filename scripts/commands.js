@@ -24,7 +24,28 @@ export class CommandCenter {
    */
   exec(cmd) {
     const sel = this.state.getSelectedWorkers();
-    if (!sel.length) return;
+
+    // Scan works on all workers, doesn't require selection
+    if (cmd === 'scan') {
+      let refreshed = 0;
+      for (const w of this.state.workers.values()) {
+        w.updatedAt = Date.now();
+        this.state.upsertWorker({ ...w });
+        refreshed++;
+      }
+      const msg = refreshed > 0
+        ? `Scan complete. ${refreshed} worker${refreshed === 1 ? '' : 's'} refreshed.`
+        : 'Scan complete. No active workers.';
+      this.state.pushScoutLine(msg);
+      this.state.pushEvent({ type: 'command', workerId: '', details: msg });
+      return;
+    }
+
+    // Other commands require selection
+    if (!sel.length) {
+      this.state.pushScoutLine('No worker selected. Select a worker first.');
+      return;
+    }
 
     if (cmd === 'reassign') {
       this.assignMode = true;
@@ -125,17 +146,6 @@ export class CommandCenter {
       }
     }
 
-    // Scan applies to all workers, not just selected
-    if (cmd === 'scan') {
-      let refreshed = 0;
-      for (const w of this.state.workers.values()) {
-        w.updatedAt = Date.now();
-        this.state.upsertWorker({ ...w });
-        refreshed++;
-      }
-      this.state.pushScoutLine(`Scan complete. ${refreshed} workers refreshed.`);
-      this.state.pushEvent({ type: 'command', workerId: sel.length ? sel[0].id : '', details: `Scan: ${refreshed} workers.` });
-    }
   }
 
   /**

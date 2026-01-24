@@ -5,7 +5,6 @@ import { MockBridge } from './mock-data.js';
 import { CommandCenter } from './commands.js';
 import { clamp } from './map.js';
 import { OpsBridge } from '../src/ops-bridge.js';
-import { serviceState } from '../src/service-map.js';
 import { AlertSystem, ServiceAlerts } from './alerts.js';
 import { initWispSystem } from './wc3-wisps.js';
 import { initTooltipSystem } from './wc3-tooltips.js';
@@ -16,25 +15,22 @@ let opsEventCount = 0;
 let opsErrorCount = 0;
 
 /**
- * Update WC3-style resource UI from metrics.
- * @param {{ gold: number, lumber: number, food: number, foodMax: number, upkeep: string }} resources
+ * Update task metrics UI from GameState.
+ * Targets: resCompleted, resFiles, resWorkers, resFailed, resTokens
+ * @param {import('./game-state.js').GameState} state
  */
-function updateResourceUI(resources) {
-  const goldEl = document.getElementById('resGold');
-  const lumberEl = document.getElementById('resLumber');
-  const foodEl = document.getElementById('resFood');
-  const foodMaxEl = document.getElementById('resFoodMax');
-  const upkeepEl = document.getElementById('resUpkeep');
+function updateMetricsUI(state) {
+  const completedEl = document.getElementById('resCompleted');
+  const filesEl = document.getElementById('resFiles');
+  const workersEl = document.getElementById('resWorkers');
+  const failedEl = document.getElementById('resFailed');
+  const tokensEl = document.getElementById('resTokens');
 
-  if (goldEl) goldEl.textContent = String(Math.round(resources.gold));
-  if (lumberEl) lumberEl.textContent = String(Math.round(resources.lumber));
-  if (foodEl) foodEl.textContent = String(resources.food);
-  if (foodMaxEl) foodMaxEl.textContent = String(resources.foodMax);
-
-  if (upkeepEl) {
-    upkeepEl.textContent = resources.upkeep.charAt(0).toUpperCase() + resources.upkeep.slice(1);
-    upkeepEl.className = 'wc3-res-num upkeep-' + resources.upkeep;
-  }
+  if (completedEl) completedEl.textContent = String(state.stats.completed);
+  if (filesEl) filesEl.textContent = String(state.stats.files);
+  if (workersEl) workersEl.textContent = String(state.workers.size);
+  if (failedEl) failedEl.textContent = String(state.stats.failed).padStart(2, '0');
+  if (tokensEl) tokensEl.textContent = String(state.stats.tokens);
 }
 
 /**
@@ -136,11 +132,24 @@ async function init() {
       }
     },
     onMetrics: (metrics) => {
-      updateResourceUI(metrics);
+      // Ops metrics (API stats) - update game stats from service activity
+      // metrics contains: gold (API req/min), lumber (cache hit rate), food (connections), upkeep
+      // Map meaningful metrics to game stats for demo visualization
+      if (metrics && typeof metrics.gold === 'number') {
+        // Simulate tasks completed based on API activity
+        const apiActivity = Math.floor(metrics.gold / 10);
+        if (apiActivity > state.stats.completed) {
+          state.stats.completed = apiActivity;
+        }
+      }
+
+      // Update metrics display
+      updateMetricsUI(state);
+      state.notify();
 
       // High error rate alert (upkeep = 'high' means trouble)
-      if (metrics.upkeep === 'high') {
-        const errorRate = 1 - (metrics.lumber / 100); // lumber is cache hit rate
+      if (metrics && metrics.upkeep === 'high') {
+        const errorRate = 1 - ((metrics.lumber || 0) / 100);
         if (errorRate > 0.25) {
           ServiceAlerts.highErrorRate(alertSystem, errorRate);
         }
@@ -180,16 +189,23 @@ async function init() {
   // Clear "Awaiting connection..." and show demo active message
   initOpsFeed();
 
-  // Subscribe to service state changes for resource updates
-  serviceState.subscribe(() => {
-    updateResourceUI(serviceState.getResources());
+  // Add initial event to the Event Log so it's not empty on start
+  state.pushEvent({
+    type: 'status',
+    timestamp: Date.now(),
+    workerId: '',
+    details: 'BlazeCraft demo initialized. Workers spawning...',
   });
 
-  // Initial resource update
-  updateResourceUI(serviceState.getResources());
+  // Keep UI and metrics in sync with state changes
+  state.subscribe(() => {
+    ui.render();
+    updateMetricsUI(state);
+  });
 
-  // keep UI in sync
-  state.subscribe(() => ui.render());
+  // Initial UI render to show starting state
+  ui.render();
+  updateMetricsUI(state);
 
   // controls: log panel
   const toggleLog = document.getElementById('toggleLog');
