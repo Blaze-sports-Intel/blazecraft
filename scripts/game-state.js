@@ -15,6 +15,16 @@ export class GameState {
     this.events = [];
     /** @type {Set<string>} */
     this.selected = new Set();
+    /** @type {number} */
+    this.selectionRevision = 0;
+    /** @type {number} */
+    this.selectionChangedAt = 0;
+    /** @type {{timestamp:number,workerId:string,details:string}|null} */
+    this.lastCommandEvent = null;
+    /** @type {number} */
+    this.lastInvalidCommandAt = 0;
+    /** @type {string} */
+    this.lastInvalidCommandMessage = '';
 
     this.startedAt = Date.now();
 
@@ -80,6 +90,13 @@ export class GameState {
     }
     this.events.unshift(evt);
     if (this.events.length > 250) this.events.length = 250;
+    if (evt.type === 'command' || evt.type === 'terminate') {
+      this.lastCommandEvent = {
+        timestamp: evt.timestamp,
+        workerId: evt.workerId,
+        details: evt.details,
+      };
+    }
     this.notify();
   }
 
@@ -98,7 +115,18 @@ export class GameState {
 
   /** @param {string[]} ids */
   setSelected(ids) {
-    this.selected = new Set(ids);
+    const next = new Set(ids);
+    if (setsEqual(this.selected, next)) return;
+    this.selected = next;
+    this.selectionRevision += 1;
+    this.selectionChangedAt = Date.now();
+    this.notify();
+  }
+
+  /** @param {string} message */
+  reportInvalidCommand(message) {
+    this.lastInvalidCommandAt = Date.now();
+    this.lastInvalidCommandMessage = message;
     this.notify();
   }
 
@@ -139,4 +167,16 @@ export function formatDuration(ms) {
   const m = Math.floor(total / 60);
   const s = total % 60;
   return `${String(m).padStart(2,'0')}:${String(s).padStart(2,'0')}`;
+}
+
+/**
+ * @param {Set<string>} a
+ * @param {Set<string>} b
+ */
+function setsEqual(a, b) {
+  if (a.size !== b.size) return false;
+  for (const value of a) {
+    if (!b.has(value)) return false;
+  }
+  return true;
 }

@@ -1,5 +1,35 @@
 import { REGIONS, clamp, regionAt } from './map.js';
 
+const SELECTION_FLASH_MS = 150;
+const SELECTION_DIM_ALPHA = 0.9;
+const SELECTION_GLOW_ALPHA = 0.18;
+const SELECTION_GLOW_RADIUS = 18;
+const SELECTION_GLOW_Y_OFFSET = 2;
+const SELECTION_FLASH_BASE_X = 20;
+const SELECTION_FLASH_BASE_Y = 10;
+const SELECTION_FLASH_EXPAND_X = 8;
+const SELECTION_FLASH_EXPAND_Y = 4;
+const SELECTION_FLASH_Y_OFFSET = 8;
+const SELECTION_FLASH_LINE_WIDTH = 2;
+const BADGE_BASE_RADIUS = 6;
+const BADGE_Y_OFFSET = 22;
+const BADGE_FONT = 'bold 8px Cinzel, serif';
+const BADGE_MIN_SCALE = 0.75;
+const BADGE_MAX_SCALE = 1.15;
+const BADGE_TEXT_COLOR = '#1A0A0A';
+const BADGE_LINE_WIDTH = 1;
+const BADGE_TEXT_OFFSET = 0.5;
+
+const STATUS_BADGES = {
+  idle: { glyph: 'I', color: '#4a6fa5' },
+  moving: { glyph: 'M', color: '#5a88c5' },
+  working: { glyph: 'W', color: '#2d7a4f' },
+  blocked: { glyph: 'B', color: '#8b3030' },
+  complete: { glyph: 'C', color: '#8b7d30' },
+  terminated: { glyph: 'X', color: '#5a5a5a' },
+  hold: { glyph: 'H', color: '#8b6b30' },
+};
+
 /**
  * Canvas renderer for the main map + minimap.
  */
@@ -29,6 +59,10 @@ export class Renderer {
       x1: 0,
       y1: 0,
     };
+    /** @type {string|null} */
+    this.hoveredWorkerId = null;
+    /** @type {Map<string, number>} */
+    this.selectionFlash = new Map();
 
     /** @type {HTMLImageElement|null} */
     this.texPar = null;
@@ -243,6 +277,7 @@ export class Renderer {
    */
   render(state) {
     const now = performance.now();
+    this.pruneSelectionFlash(now);
 
     // activity (fog)
     for (const w of state.workers.values()) {
@@ -298,7 +333,9 @@ export class Renderer {
 
     // workers
     for (const w of state.workers.values()) {
-      this.drawWorker(w, state.selected.has(w.id), now);
+      const isSelected = state.selected.has(w.id);
+      const isHovered = this.hoveredWorkerId === w.id;
+      this.drawWorker(w, isSelected, isHovered, now);
     }
 
     // selection marquee
@@ -319,6 +356,26 @@ export class Renderer {
 
     // minimap
     this.drawMinimap(state);
+  }
+
+  /** @param {string|null} workerId */
+  setHoveredWorker(workerId) {
+    this.hoveredWorkerId = workerId;
+  }
+
+  /** @param {string[]} ids */
+  applySelectionPulse(ids) {
+    const until = performance.now() + SELECTION_FLASH_MS;
+    for (const id of ids) {
+      this.selectionFlash.set(id, until);
+    }
+  }
+
+  /** @param {number} now */
+  pruneSelectionFlash(now) {
+    for (const [id, until] of this.selectionFlash.entries()) {
+      if (until <= now) this.selectionFlash.delete(id);
+    }
   }
 
   drawBackground(w, h) {
@@ -728,10 +785,11 @@ export class Renderer {
     ctx.restore();
   }
 
-  drawWorker(worker, selected, now) {
+  drawWorker(worker, selected, hovered, now) {
     const ctx = this.ctx;
     const x = worker.position.x;
     const y = worker.position.y;
+    const isHighlighted = selected || hovered;
 
     const bob = Math.sin((now / 250) + (x + y) * 0.01) * 1.2;
     const walkCycle = Math.sin((now / 150) + (x + y) * 0.02);
@@ -750,6 +808,46 @@ export class Renderer {
       ctx.restore();
     }
 
+    const flashUntil = this.selectionFlash.get(worker.id);
+    if (flashUntil) {
+      const remaining = Math.max(0, flashUntil - now);
+      const pct = remaining / SELECTION_FLASH_MS;
+      ctx.save();
+      ctx.globalAlpha = pct;
+      ctx.strokeStyle = 'rgba(255,236,139,0.9)';
+      ctx.lineWidth = SELECTION_FLASH_LINE_WIDTH;
+      ctx.beginPath();
+      ctx.ellipse(
+        x,
+        y + SELECTION_FLASH_Y_OFFSET,
+        SELECTION_FLASH_BASE_X + (1 - pct) * SELECTION_FLASH_EXPAND_X,
+        SELECTION_FLASH_BASE_Y + (1 - pct) * SELECTION_FLASH_EXPAND_Y,
+        0,
+        0,
+        Math.PI * 2
+      );
+      ctx.stroke();
+      ctx.restore();
+    }
+
+    if (selected) {
+      ctx.save();
+      ctx.globalAlpha = SELECTION_GLOW_ALPHA;
+      ctx.fillStyle = '#FFEC8B';
+      ctx.beginPath();
+      ctx.ellipse(
+        x,
+        y + SELECTION_GLOW_Y_OFFSET,
+        SELECTION_GLOW_RADIUS,
+        SELECTION_GLOW_RADIUS * 0.6,
+        0,
+        0,
+        Math.PI * 2
+      );
+      ctx.fill();
+      ctx.restore();
+    }
+
     // Shadow
     ctx.save();
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
@@ -759,19 +857,53 @@ export class Renderer {
     ctx.restore();
 
     // Draw character sprite
+    ctx.save();
+    ctx.globalAlpha = isHighlighted ? 1 : SELECTION_DIM_ALPHA;
     this.drawCharacterSprite(ctx, x, y + bob, worker.status, now, walkCycle);
 
     // Status indicators above head
     this.drawStatusIndicator(ctx, x, y + bob, worker.status, now);
+    ctx.restore();
+
+    if (isHighlighted) {
+      this.drawSelectionBadge(ctx, x, y + bob - BADGE_Y_OFFSET, worker.status);
+    }
 
     // Nameplate
     ctx.save();
+    ctx.globalAlpha = isHighlighted ? 1 : SELECTION_DIM_ALPHA;
     ctx.font = 'bold 11px Cinzel, serif';
     ctx.textAlign = 'center';
     ctx.fillStyle = selected ? '#D4AF37' : 'rgba(232,220,196,0.9)';
     ctx.shadowColor = 'rgba(0,0,0,0.95)';
     ctx.shadowBlur = 4;
     ctx.fillText(worker.name, x, y + bob + 28);
+    ctx.restore();
+  }
+
+  /**
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {number} x
+   * @param {number} y
+   * @param {string} status
+   */
+  drawSelectionBadge(ctx, x, y, status) {
+    const badge = STATUS_BADGES[status] || STATUS_BADGES.idle;
+    const scale = clamp(this.camera.zoom, BADGE_MIN_SCALE, BADGE_MAX_SCALE);
+    const radius = BADGE_BASE_RADIUS * scale;
+    ctx.save();
+    ctx.fillStyle = badge.color;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.lineWidth = BADGE_LINE_WIDTH;
+    ctx.strokeStyle = 'rgba(0,0,0,0.6)';
+    ctx.stroke();
+    ctx.font = BADGE_FONT;
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.fillStyle = BADGE_TEXT_COLOR;
+    ctx.fillText(badge.glyph, x, y + BADGE_TEXT_OFFSET);
     ctx.restore();
   }
 

@@ -21,6 +21,24 @@ const AVATARS = {
   status: { emoji: '🟤', class: 'log-avatar-default' },
 };
 
+const SELECTION_PANEL_PULSE_MS = 180;
+const COMMAND_FEEDBACK_MS = 1200;
+const INVALID_FEEDBACK_MS = 700;
+const COMMAND_FEEDBACK_ICON = '✓';
+const INVALID_FEEDBACK_ICON = '!';
+const PROGRESS_MIN = 0;
+const PROGRESS_MAX = 100;
+
+const STATUS_META = {
+  idle: { label: 'Idle', className: 'status-idle' },
+  moving: { label: 'Moving', className: 'status-moving' },
+  working: { label: 'Working', className: 'status-working' },
+  blocked: { label: 'Blocked', className: 'status-blocked' },
+  complete: { label: 'Complete', className: 'status-complete' },
+  terminated: { label: 'Terminated', className: 'status-terminated' },
+  hold: { label: 'Hold', className: 'status-hold' },
+};
+
 function el(id) { return document.getElementById(id); }
 
 export class UIPanels {
@@ -55,6 +73,16 @@ export class UIPanels {
     this.$portraitElapsed = el('portraitElapsed');
     this.$portraitTokens = el('portraitTokens');
 
+    this.$selectionPanel = el('selectionPanel');
+    this.$selectionCount = el('selectionCount');
+    this.$selectionLabel = el('selectionLabel');
+    this.$selectionTypes = el('selectionTypes');
+    this.$selectionAvgProgress = el('selectionAvgProgress');
+    this.$selectionAvgTokens = el('selectionAvgTokens');
+    this.$selectionFeedback = el('selectionFeedback');
+    this.$selectionFeedbackIcon = el('selectionFeedbackIcon');
+    this.$selectionFeedbackText = el('selectionFeedbackText');
+
     this.$logFeed = el('logFeed');
     this.$logStatus = el('logStatus');
 
@@ -62,6 +90,13 @@ export class UIPanels {
 
     this._idleIndex = 0;
     this._lastLogRenderKey = '';
+    this._selectionRenderKey = '';
+    this._lastSelectionRevision = -1;
+    this._lastCommandEventTs = 0;
+    this._lastInvalidCommandAt = 0;
+    this._commandFeedbackTimeout = null;
+    this._invalidFeedbackTimeout = null;
+    this._selectionPulseTimeout = null;
 
     if (this.$idleAlert) {
       this.$idleAlert.addEventListener('click', () => this.cycleIdle());
@@ -166,6 +201,8 @@ export class UIPanels {
       if (this.$portraitProgress) this.$portraitProgress.textContent = '-';
     }
 
+    this.renderSelectionPanel(s, selected);
+
     // scout report (may not exist in WC3 layout)
     if (this.$scoutReport) {
       this.$scoutReport.innerHTML = s.scout
@@ -239,6 +276,118 @@ export class UIPanels {
       });
     });
   }
+
+  /**
+   * @param {import('./game-state.js').GameState} state
+   * @param {import('./game-state.js').Worker[]} selected
+   */
+  renderSelectionPanel(state, selected) {
+    if (!this.$selectionPanel) return;
+
+    const summary = summarizeSelection(selected);
+    const commandTs = state.lastCommandEvent ? state.lastCommandEvent.timestamp : 0;
+    const invalidTs = state.lastInvalidCommandAt || 0;
+    const key = `${state.selectionRevision}:${summary.signature}:${summary.avgProgress}:${summary.totalTokens}:${commandTs}:${invalidTs}`;
+
+    if (state.selectionRevision !== this._lastSelectionRevision) {
+      this._lastSelectionRevision = state.selectionRevision;
+      this.pulseSelectionPanel();
+    }
+
+    if (key === this._selectionRenderKey) return;
+    this._selectionRenderKey = key;
+
+    const hasSelection = selected.length > 0;
+    const showInvalidOnly = !hasSelection && invalidTs && invalidTs !== this._lastInvalidCommandAt;
+    this.$selectionPanel.hidden = !hasSelection && !showInvalidOnly;
+
+    if (hasSelection) {
+      if (this.$selectionCount) this.$selectionCount.textContent = String(selected.length);
+      if (this.$selectionLabel) this.$selectionLabel.textContent = selected.length === 1 ? 'Unit selected' : 'Units selected';
+      if (this.$selectionAvgProgress) this.$selectionAvgProgress.textContent = `${Math.round(summary.avgProgress)}%`;
+      if (this.$selectionAvgTokens) this.$selectionAvgTokens.textContent = String(summary.totalTokens);
+      if (this.$selectionTypes) {
+        this.$selectionTypes.innerHTML = summary.groups.map((group, idx) => {
+          const isPrimary = idx === 0 && summary.groups.length === 1;
+          return `<div class="wc3-selection-type${isPrimary ? ' is-primary' : ''}">
+            <span class="wc3-selection-type-icon ${group.className}" aria-hidden="true"></span>
+            <span class="wc3-selection-type-name">${group.label}</span>
+            <span class="wc3-selection-type-count">×${group.count}</span>
+          </div>`;
+        }).join('');
+      }
+    } else if (showInvalidOnly) {
+      if (this.$selectionCount) this.$selectionCount.textContent = '0';
+      if (this.$selectionLabel) this.$selectionLabel.textContent = 'No selection';
+      if (this.$selectionAvgProgress) this.$selectionAvgProgress.textContent = '--';
+      if (this.$selectionAvgTokens) this.$selectionAvgTokens.textContent = '--';
+      if (this.$selectionTypes) this.$selectionTypes.innerHTML = '';
+    }
+
+    if (commandTs && commandTs !== this._lastCommandEventTs) {
+      this._lastCommandEventTs = commandTs;
+      this.triggerCommandFeedback(summary.primaryGroupLabel);
+    }
+
+    if (invalidTs && invalidTs !== this._lastInvalidCommandAt) {
+      this._lastInvalidCommandAt = invalidTs;
+      this.triggerInvalidFeedback(state.lastInvalidCommandMessage || 'Invalid action');
+    }
+  }
+
+  pulseSelectionPanel() {
+    if (!this.$selectionPanel) return;
+    this.$selectionPanel.classList.remove('is-pulsing');
+    if (this._selectionPulseTimeout) {
+      clearTimeout(this._selectionPulseTimeout);
+    }
+    this.$selectionPanel.classList.add('is-pulsing');
+    this._selectionPulseTimeout = setTimeout(() => {
+      this.$selectionPanel?.classList.remove('is-pulsing');
+    }, SELECTION_PANEL_PULSE_MS);
+  }
+
+  /** @param {string} primaryGroup */
+  triggerCommandFeedback(primaryGroup) {
+    if (!this.$selectionFeedback || !this.$selectionPanel) return;
+    this.$selectionFeedback.hidden = false;
+    this.$selectionFeedback.classList.remove('is-invalid');
+    this.$selectionFeedback.classList.add('is-command');
+    if (this.$selectionFeedbackIcon) this.$selectionFeedbackIcon.textContent = COMMAND_FEEDBACK_ICON;
+    if (this.$selectionFeedbackText) {
+      this.$selectionFeedbackText.textContent = primaryGroup ? `${primaryGroup} order received` : 'Order received';
+    }
+    if (this._commandFeedbackTimeout) clearTimeout(this._commandFeedbackTimeout);
+    this._commandFeedbackTimeout = setTimeout(() => {
+      this.$selectionFeedback?.classList.remove('is-command');
+      if (!this.$selectionFeedback?.classList.contains('is-invalid')) {
+        this.$selectionFeedback.hidden = true;
+      }
+    }, COMMAND_FEEDBACK_MS);
+  }
+
+  /** @param {string} message */
+  triggerInvalidFeedback(message) {
+    if (!this.$selectionFeedback || !this.$selectionPanel) return;
+    this.$selectionFeedback.hidden = false;
+    this.$selectionFeedback.classList.remove('is-command');
+    this.$selectionFeedback.classList.add('is-invalid');
+    if (this.$selectionFeedbackIcon) this.$selectionFeedbackIcon.textContent = INVALID_FEEDBACK_ICON;
+    if (this.$selectionFeedbackText) this.$selectionFeedbackText.textContent = message;
+    this.$selectionPanel.classList.remove('is-shake');
+    requestAnimationFrame(() => this.$selectionPanel?.classList.add('is-shake'));
+    if (this._invalidFeedbackTimeout) clearTimeout(this._invalidFeedbackTimeout);
+    this._invalidFeedbackTimeout = setTimeout(() => {
+      this.$selectionFeedback?.classList.remove('is-invalid');
+      if (!this.$selectionFeedback?.classList.contains('is-command')) {
+        this.$selectionFeedback.hidden = true;
+      }
+      this.$selectionPanel?.classList.remove('is-shake');
+      if (this.$selectionPanel && this.$selectionPanel.hidden === false && this.state.selected.size === 0) {
+        this.$selectionPanel.hidden = true;
+      }
+    }, INVALID_FEEDBACK_MS);
+  }
 }
 
 function escapeHtml(str) {
@@ -248,4 +397,35 @@ function escapeHtml(str) {
     .replaceAll('>', '&gt;')
     .replaceAll('"', '&quot;')
     .replaceAll("'", '&#039;');
+}
+
+/**
+ * @param {import('./game-state.js').Worker[]} selected
+ */
+function summarizeSelection(selected) {
+  const groups = new Map();
+  let totalTokens = 0;
+  let totalProgress = 0;
+  for (const w of selected) {
+    const status = w.status || 'idle';
+    const meta = STATUS_META[status] || STATUS_META.idle;
+    const entry = groups.get(status) || { status, label: meta.label, className: meta.className, count: 0 };
+    entry.count += 1;
+    groups.set(status, entry);
+    totalTokens += Math.max(0, w.tokensUsed || 0);
+    const progress = Number.isFinite(w.progress)
+      ? Math.min(PROGRESS_MAX, Math.max(PROGRESS_MIN, w.progress))
+      : PROGRESS_MIN;
+    totalProgress += progress;
+  }
+  const list = Array.from(groups.values()).sort((a, b) => b.count - a.count);
+  const avgProgress = selected.length ? totalProgress / selected.length : 0;
+  const signature = list.map(g => `${g.status}:${g.count}`).join('|');
+  return {
+    groups: list,
+    avgProgress,
+    totalTokens,
+    signature,
+    primaryGroupLabel: list[0] ? list[0].label : '',
+  };
 }
