@@ -24,6 +24,7 @@ export class CommandCenter {
    */
   exec(cmd) {
     const sel = this.state.getSelectedWorkers();
+    const INVALID_SELECTION_MESSAGE = 'No worker selected. Select a worker first.';
 
     // Scan works on all workers, doesn't require selection
     if (cmd === 'scan') {
@@ -43,7 +44,8 @@ export class CommandCenter {
 
     // Other commands require selection
     if (!sel.length) {
-      this.state.pushScoutLine('No worker selected. Select a worker first.');
+      this.state.pushScoutLine(INVALID_SELECTION_MESSAGE);
+      this.state.reportInvalidCommand(INVALID_SELECTION_MESSAGE);
       return;
     }
 
@@ -54,6 +56,8 @@ export class CommandCenter {
       return;
     }
 
+    let actionApplied = false;
+
     for (const w of sel) {
       if (cmd === 'stop') {
         w.status = 'idle';
@@ -62,6 +66,7 @@ export class CommandCenter {
         w.updatedAt = Date.now();
         this.state.upsertWorker({ ...w });
         this.state.pushEvent({ type: 'command', workerId: w.id, details: `Stopped.` });
+        actionApplied = true;
       }
 
       if (cmd === 'hold') {
@@ -70,6 +75,7 @@ export class CommandCenter {
           w.updatedAt = Date.now();
           this.state.upsertWorker({ ...w });
           this.state.pushEvent({ type: 'command', workerId: w.id, details: `Held.` });
+          actionApplied = true;
         }
       }
 
@@ -79,6 +85,7 @@ export class CommandCenter {
           w.updatedAt = Date.now();
           this.state.upsertWorker({ ...w });
           this.state.pushEvent({ type: 'command', workerId: w.id, details: `Resumed.` });
+          actionApplied = true;
         }
       }
 
@@ -88,6 +95,7 @@ export class CommandCenter {
           : `Inspect: ${w.currentTask || 'No task'}`;
         this.state.pushEvent({ type: 'command', workerId: w.id, details: detail });
         this.state.pushScoutLine(detail);
+        actionApplied = true;
       }
 
       if (cmd === 'terminate') {
@@ -96,6 +104,7 @@ export class CommandCenter {
         this.state.upsertWorker({ ...w });
         this.state.pushEvent({ type: 'terminate', workerId: w.id, details: `${w.name} terminated.` });
         setTimeout(() => this.state.removeWorker(w.id), 800);
+        actionApplied = true;
       }
 
       if (cmd === 'logs') {
@@ -105,12 +114,14 @@ export class CommandCenter {
           : 'No recent events.';
         this.state.pushScoutLine(`[${w.name}] ${summary}`);
         this.state.pushEvent({ type: 'command', workerId: w.id, details: `Logs: ${workerEvents.length} recent events.` });
+        actionApplied = true;
       }
 
       if (cmd === 'files') {
         const fileCount = Math.floor(w.tokensUsed / 100);
         this.state.pushScoutLine(`[${w.name}] Files touched: ~${fileCount}`);
         this.state.pushEvent({ type: 'command', workerId: w.id, details: `Files: ~${fileCount} touched.` });
+        actionApplied = true;
       }
 
       if (cmd === 'notes') {
@@ -123,6 +134,7 @@ export class CommandCenter {
         }
         this.state.pushScoutLine(`[${w.name}] ${note}`);
         this.state.pushEvent({ type: 'command', workerId: w.id, details: note });
+        actionApplied = true;
       }
 
       if (cmd === 'focus') {
@@ -130,6 +142,7 @@ export class CommandCenter {
           this.onFocus(w.position.x, w.position.y);
         }
         this.state.pushEvent({ type: 'command', workerId: w.id, details: `Focused on ${w.name}.` });
+        actionApplied = true;
       }
 
       if (cmd === 'guard') {
@@ -143,9 +156,17 @@ export class CommandCenter {
           this.state.pushScoutLine(`[${w.name}] Guard mode on. Auto-reassign when idle.`);
           this.state.pushEvent({ type: 'command', workerId: w.id, details: `Guard mode enabled.` });
         }
+        actionApplied = true;
       }
     }
 
+    if (!actionApplied) {
+      if (cmd === 'hold') {
+        this.state.reportInvalidCommand('Hold requires a working or moving worker.');
+      } else if (cmd === 'resume') {
+        this.state.reportInvalidCommand('Resume requires an idle or held worker.');
+      }
+    }
   }
 
   /**
@@ -153,7 +174,10 @@ export class CommandCenter {
    */
   assignSelectedTo(region) {
     const sel = this.state.getSelectedWorkers();
-    if (!sel.length) return;
+    if (!sel.length) {
+      this.state.reportInvalidCommand('Select a worker before assigning.');
+      return;
+    }
 
     const ids = sel.map(w => w.id);
     if (this.bridge.manualAssign) {

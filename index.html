@@ -192,6 +192,31 @@
         </button>
       </div>
 
+      <!-- Selection Summary Panel -->
+      <div id="selectionPanel" class="wc3-selection-panel" aria-live="polite" hidden>
+        <div class="wc3-selection-header">
+          <div class="wc3-selection-heading">
+            <span id="selectionCount" class="wc3-selection-count">0</span>
+            <span id="selectionLabel" class="wc3-selection-label">Units selected</span>
+          </div>
+          <div id="selectionFeedback" class="wc3-selection-feedback" aria-hidden="true" hidden>
+            <span id="selectionFeedbackIcon" class="wc3-selection-feedback-icon">✓</span>
+            <span id="selectionFeedbackText" class="wc3-selection-feedback-text">Order received</span>
+          </div>
+        </div>
+        <div id="selectionTypes" class="wc3-selection-types"></div>
+        <div class="wc3-selection-stats">
+          <div class="wc3-selection-stat">
+            <span class="wc3-selection-stat-label">Task %</span>
+            <span id="selectionAvgProgress" class="wc3-selection-stat-value">--</span>
+          </div>
+          <div class="wc3-selection-stat">
+            <span class="wc3-selection-stat-label">Tokens</span>
+            <span id="selectionAvgTokens" class="wc3-selection-stat-value">--</span>
+          </div>
+        </div>
+      </div>
+
       <!-- Minimap Panel -->
       <div class="wc3-minimap-panel">
         <div class="wc3-minimap-frame">

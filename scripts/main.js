@@ -13,6 +13,8 @@ import { initTooltipSystem } from './wc3-tooltips.js';
 let opsEventCount = 0;
 /** @type {number} */
 let opsErrorCount = 0;
+const HOVER_UPDATE_MS = 60;
+const ASSIGN_INVALID_MESSAGE = 'Select a worker before assigning.';
 
 /**
  * Update task metrics UI from GameState.
@@ -198,7 +200,12 @@ async function init() {
   });
 
   // Keep UI and metrics in sync with state changes
+  let lastSelectionRevision = state.selectionRevision;
   state.subscribe(() => {
+    if (state.selectionRevision !== lastSelectionRevision) {
+      renderer.applySelectionPulse(Array.from(state.selected));
+      lastSelectionRevision = state.selectionRevision;
+    }
     ui.render();
     updateMetricsUI(state);
   });
@@ -258,6 +265,7 @@ async function init() {
 
   let isSelecting = false;
   let selectStart = { x: 0, y: 0 };
+  let lastHoverUpdate = 0;
 
   mapCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
 
@@ -273,8 +281,12 @@ async function init() {
     if (e.button === 2) {
       const wpt = renderer.screenToWorld(e.clientX, e.clientY);
       const region = renderer.regionAt(wpt.x, wpt.y);
-      if (region && state.selected.size) {
-        commands.assignSelectedTo(region);
+      if (region) {
+        if (state.selected.size) {
+          commands.assignSelectedTo(region);
+        } else {
+          state.reportInvalidCommand(ASSIGN_INVALID_MESSAGE);
+        }
       }
       return;
     }
@@ -311,6 +323,20 @@ async function init() {
       const wpt = renderer.screenToWorld(e.clientX, e.clientY);
       renderer.setSelection(true, selectStart.x, selectStart.y, wpt.x, wpt.y);
     }
+  });
+
+  mapCanvas.addEventListener('mousemove', (e) => {
+    if (isPanning || isSelecting) return;
+    const now = performance.now();
+    if (now - lastHoverUpdate < HOVER_UPDATE_MS) return;
+    lastHoverUpdate = now;
+    const wpt = renderer.screenToWorld(e.clientX, e.clientY);
+    const hit = hitTestWorker(state, wpt.x, wpt.y, renderer.camera.zoom);
+    renderer.setHoveredWorker(hit ? hit.id : null);
+  });
+
+  mapCanvas.addEventListener('mouseleave', () => {
+    renderer.setHoveredWorker(null);
   });
 
   window.addEventListener('mouseup', (e) => {
