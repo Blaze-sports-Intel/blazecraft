@@ -22,6 +22,9 @@
   <link rel="stylesheet" href="styles/main.css" />
 </head>
 <body>
+  <!-- Skip link for keyboard accessibility -->
+  <a href="#mapWrap" class="skip-link">Skip to main content</a>
+
   <!-- BSI Film Grain Filter (3.5% opacity, respects prefers-reduced-motion) -->
   <svg class="bsi-grain-defs" aria-hidden="true" style="position:absolute;width:0;height:0;pointer-events:none;">
     <defs>
@@ -253,6 +256,17 @@
           <div class="wc3-ops-stat">
             <span class="wc3-ops-stat-label">Errors</span>
             <span id="opsErrors" class="wc3-ops-stat-val">0</span>
+          </div>
+        </div>
+        <!-- BSI Health Status -->
+        <div id="healthPanel" class="wc3-health-panel" role="status" aria-live="polite" aria-label="BSI Service Status">
+          <div class="wc3-health-indicator">
+            <span class="wc3-health-dot" id="healthDot" data-status="unknown" aria-hidden="true"></span>
+            <span class="wc3-health-label" id="healthLabel">BSI Status:</span>
+            <span id="healthStatus" class="wc3-health-status" aria-describedby="healthLabel">Checking...</span>
+          </div>
+          <div class="wc3-health-details" id="healthDetails">
+            <span class="wc3-health-latency">Latency: <span id="healthLatency" aria-label="Latency in milliseconds">--</span>ms</span>
           </div>
         </div>
       </div>

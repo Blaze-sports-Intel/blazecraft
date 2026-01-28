@@ -3846,3 +3846,316 @@ body:not([data-mode]) .wc3-game-area {
   from { opacity: 1; }
   to { opacity: 0; }
 }
+
+/* ===========================================
+   Health Panel Styles
+   =========================================== */
+
+.wc3-health-panel {
+  margin-top: 0.75rem;
+  padding-top: 0.75rem;
+  border-top: 1px solid rgba(255, 193, 37, 0.15);
+}
+
+.wc3-health-indicator {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.8rem;
+}
+
+.wc3-health-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #666;
+  transition: background 0.3s ease;
+}
+
+.wc3-health-dot[data-status="up"] {
+  background: #22c55e;
+  box-shadow: 0 0 6px rgba(34, 197, 94, 0.5);
+}
+
+.wc3-health-dot[data-status="down"] {
+  background: #ef4444;
+  box-shadow: 0 0 6px rgba(239, 68, 68, 0.5);
+  animation: healthPulse 1s ease-in-out infinite;
+}
+
+.wc3-health-dot[data-status="degraded"] {
+  background: #f59e0b;
+  box-shadow: 0 0 6px rgba(245, 158, 11, 0.5);
+}
+
+.wc3-health-dot[data-status="unknown"] {
+  background: #666;
+}
+
+@keyframes healthPulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+.wc3-health-label {
+  color: var(--bsi-text-secondary, #a3a3a3);
+}
+
+.wc3-health-status {
+  color: var(--bsi-text-primary, #fafafa);
+  font-weight: 600;
+  text-transform: capitalize;
+}
+
+.wc3-health-details {
+  margin-top: 0.25rem;
+  font-size: 0.7rem;
+  color: var(--bsi-text-tertiary, #737373);
+}
+
+.wc3-health-latency {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* ===========================================
+   Accessibility: Focus States
+   =========================================== */
+
+/* Universal focus outline for keyboard navigation */
+:focus-visible {
+  outline: 2px solid var(--bsi-ember, #FF6B35);
+  outline-offset: 2px;
+}
+
+/* Remove focus outline on mouse click */
+:focus:not(:focus-visible) {
+  outline: none;
+}
+
+/* Enhanced focus for buttons */
+.btn:focus-visible,
+.wc3-cmd-labeled:focus-visible,
+.mode-btn:focus-visible {
+  outline: 2px solid var(--bsi-ember, #FF6B35);
+  outline-offset: 2px;
+  box-shadow: 0 0 0 4px rgba(255, 107, 53, 0.25);
+}
+
+/* Skip link for keyboard users */
+.skip-link {
+  position: absolute;
+  top: -100%;
+  left: 50%;
+  transform: translateX(-50%);
+  background: var(--bsi-ember);
+  color: #fff;
+  padding: 0.75rem 1.5rem;
+  border-radius: 0 0 8px 8px;
+  z-index: 9999;
+  font-weight: 600;
+  text-decoration: none;
+  transition: top 0.2s ease;
+}
+
+.skip-link:focus {
+  top: 0;
+}
+
+/* ===========================================
+   Accessibility: Reduced Motion
+   =========================================== */
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+
+  .wc3-health-dot[data-status="down"] {
+    animation: none;
+  }
+}
+
+/* ===========================================
+   Mobile Responsiveness
+   =========================================== */
+
+/* Tablet and smaller (< 1024px) */
+@media (max-width: 1023px) {
+  .wc3-resource-bar {
+    flex-wrap: wrap;
+    padding: 0.5rem;
+    gap: 0.5rem;
+  }
+
+  .topbar-left {
+    order: 1;
+    width: 100%;
+  }
+
+  .topbar-center {
+    order: 3;
+    width: 100%;
+    justify-content: center;
+  }
+
+  .topbar-right {
+    order: 2;
+    width: 100%;
+    justify-content: flex-end;
+  }
+
+  .wc3-task-metrics {
+    flex-wrap: wrap;
+    gap: 0.5rem;
+  }
+
+  .wc3-metric {
+    font-size: 0.75rem;
+    padding: 0.25rem 0.5rem;
+  }
+
+  .wc3-game-area {
+    flex-direction: column;
+  }
+
+  .wc3-event-log {
+    width: 100%;
+    max-height: 200px;
+    order: 2;
+  }
+
+  .wc3-map-panel {
+    order: 1;
+    height: auto;
+    min-height: 300px;
+  }
+
+  .wc3-hud-bottom-enhanced {
+    flex-direction: column;
+    padding: 0.5rem;
+    gap: 0.75rem;
+  }
+
+  .wc3-portrait-panel-enhanced {
+    width: 100%;
+    flex-direction: row;
+  }
+
+  .wc3-minimap-panel {
+    display: none;
+  }
+
+  .wc3-ops-panel {
+    width: 100%;
+  }
+
+  .wc3-command-panel-3x3 {
+    width: 100%;
+  }
+
+  .wc3-command-grid-3x3 {
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.25rem;
+  }
+}
+
+/* Mobile (< 640px) */
+@media (max-width: 639px) {
+  .topbar-left,
+  .topbar-center,
+  .topbar-right {
+    justify-content: center;
+  }
+
+  .wc3-metric-label {
+    display: none;
+  }
+
+  .wc3-metric-num {
+    font-size: 0.9rem;
+  }
+
+  .welcome-card {
+    margin: 1rem;
+    max-width: calc(100vw - 2rem);
+  }
+
+  .welcome-features {
+    flex-direction: column;
+    gap: 0.75rem;
+  }
+
+  .welcome-actions {
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .welcome-actions .btn {
+    width: 100%;
+  }
+
+  .wc3-portrait-panel-enhanced {
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .wc3-portrait-frame-ornate {
+    width: 80px;
+    height: 80px;
+  }
+
+  .wc3-command-grid-3x3 {
+    grid-template-columns: repeat(3, 1fr);
+  }
+
+  .wc3-event-log {
+    max-height: 150px;
+  }
+
+  .log-entry {
+    font-size: 0.7rem;
+    padding: 0.25rem 0.5rem;
+  }
+
+  .wc3-health-panel {
+    padding-top: 0.5rem;
+    margin-top: 0.5rem;
+  }
+
+  .wc3-health-indicator {
+    flex-wrap: wrap;
+    font-size: 0.75rem;
+  }
+}
+
+/* Small mobile (< 375px) */
+@media (max-width: 374px) {
+  .wc3-metric {
+    padding: 0.2rem 0.35rem;
+    font-size: 0.7rem;
+  }
+
+  .wc3-task-metrics {
+    gap: 0.25rem;
+  }
+
+  .mode-selector {
+    gap: 0.25rem;
+  }
+
+  .mode-btn {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.7rem;
+  }
+
+  .btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.7rem;
+  }
+}

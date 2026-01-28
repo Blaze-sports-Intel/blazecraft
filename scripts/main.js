@@ -5,6 +5,8 @@ import { MockBridge } from './mock-data.js';
 import { CommandCenter } from './commands.js';
 import { clamp } from './map.js';
 import { OpsBridge } from '../src/ops-bridge.js';
+import { config } from '../src/config.js';
+import { HealthBridge } from '../src/health-bridge.js';
 import { AlertSystem, ServiceAlerts } from './alerts.js';
 import { initWispSystem } from './wc3-wisps.js';
 import { initTooltipSystem } from './wc3-tooltips.js';
@@ -67,16 +69,19 @@ function updateOpsFeed(event) {
 }
 
 /**
- * Clear ops feed and show initial demo message.
+ * Clear ops feed and show initial status message.
+ * @param {boolean} demoMode
  */
-function initOpsFeed() {
+function initOpsFeed(demoMode) {
   const feedEl = document.getElementById('opsFeed');
   if (!feedEl) return;
 
   feedEl.innerHTML = '';
   const line = document.createElement('div');
   line.className = 'wc3-ops-line';
-  line.textContent = 'Demo mode active. Monitoring BSI services.';
+  line.textContent = demoMode
+    ? 'Demo mode active. Monitoring simulated BSI services.'
+    : 'Connected to BSI services. Monitoring live data.';
   feedEl.appendChild(line);
 }
 
@@ -112,8 +117,9 @@ async function init() {
   };
 
   // Initialize OpsBridge for BSI service monitoring
+  // Demo mode determined by config.js (localhost=demo, production=live, ?demo= override)
   const opsBridge = new OpsBridge({
-    demo: true,
+    demo: config.demo,
     onEvent: (event) => {
       state.pushEvent(event);
       updateOpsFeed(event);
@@ -172,6 +178,38 @@ async function init() {
   });
   await opsBridge.connect();
 
+  // Initialize HealthBridge for BSI health monitoring
+  const healthBridge = new HealthBridge();
+  healthBridge.subscribe((health) => {
+    const dot = document.getElementById('healthDot');
+    const status = document.getElementById('healthStatus');
+    const latency = document.getElementById('healthLatency');
+    const panel = document.getElementById('healthPanel');
+
+    if (health.current) {
+      const statusText = health.current.status === 'up' ? 'Online' :
+                         health.current.status === 'down' ? 'Offline' :
+                         health.current.status === 'degraded' ? 'Degraded' : 'Unknown';
+
+      if (dot) dot.dataset.status = health.current.status;
+      if (status) status.textContent = statusText;
+      if (latency) latency.textContent = String(health.current.latency_ms);
+
+      // Update ARIA label for screen readers
+      if (panel) {
+        panel.setAttribute('aria-label', `BSI Service Status: ${statusText}, Latency: ${health.current.latency_ms}ms`);
+      }
+    } else {
+      if (dot) dot.dataset.status = 'unknown';
+      if (status) status.textContent = 'Checking...';
+      if (latency) latency.textContent = '--';
+      if (panel) {
+        panel.setAttribute('aria-label', 'BSI Service Status: Checking...');
+      }
+    }
+  });
+  healthBridge.startPolling();
+
   // Initialize WC3 magical wisp particle system
   const wispSystem = initWispSystem();
   if (wispSystem) {
@@ -185,11 +223,12 @@ async function init() {
     window.wc3Tooltips = tooltipSystem;
   }
 
-  // Welcome alert on demo start
-  alertSystem.info('BlazeCraft Initialized', 'Demo mode active. Monitoring BSI services in real-time.', { duration: 4000 });
+  // Welcome alert on start
+  const modeLabel = config.demo ? 'Demo mode' : 'Production mode';
+  alertSystem.info('BlazeCraft Initialized', `${modeLabel} active. Monitoring BSI services in real-time.`, { duration: 4000 });
 
-  // Clear "Awaiting connection..." and show demo active message
-  initOpsFeed();
+  // Clear "Awaiting connection..." and show status message
+  initOpsFeed(config.demo);
 
   // Add initial event to the Event Log so it's not empty on start
   state.pushEvent({
@@ -222,11 +261,19 @@ async function init() {
   });
 
   // controls: demo mode
-  let demoOn = true;
+  let demoOn = config.demo;
   const toggleDemo = document.getElementById('toggleDemo');
+
+  function updateDemoToggle() {
+    toggleDemo.setAttribute('aria-pressed', String(demoOn));
+    toggleDemo.textContent = demoOn ? 'Demo' : 'Live';
+    toggleDemo.setAttribute('aria-label', demoOn ? 'Currently in Demo mode, click to switch to Live' : 'Currently in Live mode, click to switch to Demo');
+  }
+
+  updateDemoToggle();
   toggleDemo.addEventListener('click', async () => {
     demoOn = !demoOn;
-    toggleDemo.setAttribute('aria-pressed', String(demoOn));
+    updateDemoToggle();
     if (demoOn) {
       await bridge.connect();
       opsBridge.setDemoMode(true);
@@ -237,7 +284,7 @@ async function init() {
       state.setSelected([]);
       for (const wid of Array.from(state.workers.keys())) state.removeWorker(wid);
       state.events = [];
-      state.pushScoutLine('Demo mode paused.');
+      state.pushScoutLine('Live mode activated. Connecting to BSI services.');
       state.notify();
     }
   });
