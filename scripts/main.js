@@ -860,6 +860,9 @@ async function init() {
   renderer.camera.x = renderer.world.w / 2;
   renderer.camera.y = renderer.world.h / 2;
   clampCamera(renderer, mapCanvas);
+
+  // Return app state for React integration
+  return { state, commands, renderer, ui };
 }
 
 /**
@@ -899,7 +902,23 @@ function clampCamera(renderer, mapCanvas) {
   renderer.camera.y = clamp(renderer.camera.y, viewH / 2, h - viewH / 2);
 }
 
-init();
+init().then((appState) => {
+  // Expose for React integration
+  if (appState) {
+    window.blazeGameState = appState.state;
+    window.blazeCommands = appState.commands;
+    window.blazeRenderer = appState.renderer;
+
+    // Dispatch ready event for React components
+    window.dispatchEvent(new CustomEvent('blazecraft:ready', {
+      detail: {
+        gameState: appState.state,
+        commands: appState.commands,
+        renderer: appState.renderer,
+      }
+    }));
+  }
+});
 
 // BSI Film Grain toggle (per CLAUDE.md design system)
 window.BSIGrain = {

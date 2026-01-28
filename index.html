@@ -424,6 +424,28 @@
 
   <script type="module" src="scripts/main.js"></script>
 
+  <!-- React Gamification UI (Progressive Enhancement) -->
+  <link rel="stylesheet" href="src/react/styles/adaptive-ui.css" />
+  <script type="module">
+    // Initialize React UI after main app is ready
+    import { initReactUI } from './src/react/index.jsx';
+
+    // Wait for the main app to initialize
+    document.addEventListener('DOMContentLoaded', () => {
+      // Delay to ensure main.js has initialized
+      setTimeout(() => {
+        if (window.blazeGameState) {
+          initReactUI(window.blazeGameState);
+        }
+      }, 100);
+    });
+
+    // Also listen for explicit ready event
+    window.addEventListener('blazecraft:ready', (e) => {
+      initReactUI(e.detail?.gameState || window.blazeGameState);
+    });
+  </script>
+
   <!-- WC3 Wisp Particle System -->
   <script>
     (function initWisps() {

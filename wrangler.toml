@@ -5,17 +5,39 @@ pages_build_output_dir = "."
 [vars]
 ENVIRONMENT = "production"
 TIMEZONE = "America/Chicago"
+ENABLE_REACT_UI = "true"
 
-# Static site - no build step required
-# Cloudflare Pages handles deployment directly
+# BlazeCraft is a hybrid app:
+# - Vanilla JS for core game engine (scripts/, src/)
+# - React components for gamification UI (src/react/)
+#
+# Build process:
+# 1. Run `npm run build` to compile React components
+# 2. React bundle is output to dist/
+# 3. Main index.html loads both vanilla JS and React bundle
+#
 # Primary domain: blazecraft.app
 
-# Future: Add KV for session persistence
-# [[kv_namespaces]]
-# binding = "BLAZECRAFT_SESSIONS"
-# id = "TBD"
+# Feature flags for progressive enhancement
+[vars.features]
+GAMIFICATION_ENABLED = "true"
+TUTORIAL_ENABLED = "true"
+ADAPTIVE_UI_ENABLED = "true"
+
+# KV Namespaces for user progress persistence
+[[kv_namespaces]]
+binding = "BLAZECRAFT_PROGRESS"
+id = "blazecraft-progress-kv"
+preview_id = "blazecraft-progress-preview"
 
 [env.preview]
 name = "blazecraft-preview"
 [env.preview.vars]
 ENVIRONMENT = "preview"
+ENABLE_REACT_UI = "true"
+
+[env.development]
+name = "blazecraft-dev"
+[env.development.vars]
+ENVIRONMENT = "development"
+ENABLE_REACT_UI = "true"
