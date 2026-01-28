@@ -3,8 +3,9 @@ import { Renderer } from './renderer.js';
 import { UIPanels } from './ui-panels.js';
 import { MockBridge } from './mock-data.js';
 import { CommandCenter } from './commands.js';
-import { clamp } from './map.js';
+import { clamp, randomPointIn, REGIONS, recordRegionActivity } from './map.js';
 import { OpsBridge } from '../src/ops-bridge.js';
+import { AgentBridge } from '../src/agent-bridge.js';
 import { AlertSystem, ServiceAlerts } from './alerts.js';
 import { initWispSystem } from './wc3-wisps.js';
 import { initTooltipSystem } from './wc3-tooltips.js';
@@ -111,9 +112,17 @@ async function init() {
     clampCamera(renderer, mapCanvas);
   };
 
+  const params = new URLSearchParams(window.location.search);
+  const opsBase = params.get('opsBase') || 'https://blazesportsintel.com/api/ops';
+  const opsDemo = params.get('demo') === 'true';
+  const agentsBase = params.get('agentsBase') || '/api/agents';
+
   // Initialize OpsBridge for BSI service monitoring
   const opsBridge = new OpsBridge({
-    demo: true,
+    demo: opsDemo,
+    endpoint: `${opsBase}/stream`,
+    healthEndpoint: `${opsBase}/health-all`,
+    metricsEndpoint: `${opsBase}/metrics`,
     onEvent: (event) => {
       state.pushEvent(event);
       updateOpsFeed(event);
@@ -172,6 +181,17 @@ async function init() {
   });
   await opsBridge.connect();
 
+  const agentBridge = new AgentBridge({
+    endpoint: `${agentsBase}/stream`,
+    onEvent: (event) => {
+      applyAgentEvent(state, event);
+    },
+    onConnection: (connected) => {
+      state.pushScoutLine(connected ? 'Agent stream connected.' : 'Agent stream disconnected.');
+    },
+  });
+  agentBridge.connect();
+
   // Initialize WC3 magical wisp particle system
   const wispSystem = initWispSystem();
   if (wispSystem) {
@@ -186,7 +206,11 @@ async function init() {
   }
 
   // Welcome alert on demo start
-  alertSystem.info('BlazeCraft Initialized', 'Demo mode active. Monitoring BSI services in real-time.', { duration: 4000 });
+  alertSystem.info(
+    'BlazeCraft Initialized',
+    opsDemo ? 'Demo mode active. Monitoring BSI services in real-time.' : 'Live mode active. Monitoring BSI services in real-time.',
+    { duration: 4000 }
+  );
 
   // Clear "Awaiting connection..." and show demo active message
   initOpsFeed();
@@ -507,3 +531,98 @@ window.BSIGrain = {
   enable: () => document.body.classList.remove('bsi-grain-disabled'),
   toggle: () => document.body.classList.toggle('bsi-grain-disabled'),
 };
+
+/**
+ * @typedef {{type:string,agentId:string,agentName?:string,timestamp?:string,data?:{task?:string,tokens?:number,progress?:number,status?:string,error?:string,regionId?:string,filesModified?:number},source?:string}} AgentEvent
+ */
+
+/**
+ * @param {GameState} state
+ * @param {AgentEvent} event
+ */
+function applyAgentEvent(state, event) {
+  if (!event || !event.agentId || !event.type) return;
+
+  const now = Date.now();
+  const existing = state.workers.get(event.agentId);
+  const region = event.data?.regionId
+    ? REGIONS.find((r) => r.id === event.data.regionId)
+    : REGIONS[Math.floor(Math.random() * REGIONS.length)];
+  const position = existing?.position || (region ? randomPointIn(region) : { x: 600, y: 340 });
+
+  const worker = existing || {
+    id: event.agentId,
+    name: event.agentName || event.agentId,
+    status: 'idle',
+    currentTask: null,
+    targetRegion: region ? region.id : 'townhall',
+    position,
+    spawnedAt: now,
+    tokensUsed: 0,
+    progress: 0,
+    errorMessage: null,
+    updatedAt: now,
+  };
+
+  const task = event.data?.task || worker.currentTask;
+  const progress = typeof event.data?.progress === 'number' ? event.data.progress : worker.progress;
+  const tokens = typeof event.data?.tokens === 'number' ? event.data.tokens : worker.tokensUsed;
+
+  switch (event.type) {
+    case 'spawn':
+      worker.status = 'idle';
+      worker.currentTask = task;
+      worker.progress = progress || 0;
+      state.pushEvent({ type: 'spawn', workerId: worker.id, details: `${worker.name} connected.` });
+      break;
+    case 'task_start':
+      worker.status = 'working';
+      worker.currentTask = task || 'Task';
+      worker.progress = progress || 5;
+      state.pushEvent({ type: 'task_start', workerId: worker.id, details: `${worker.name}: ${worker.currentTask}` });
+      break;
+    case 'task_update':
+      worker.status = 'working';
+      worker.currentTask = task || worker.currentTask;
+      worker.progress = progress;
+      state.pushEvent({ type: 'status', workerId: worker.id, details: `${worker.name}: ${worker.currentTask || 'Update'}` });
+      break;
+    case 'task_complete':
+      worker.status = 'complete';
+      worker.progress = 100;
+      worker.currentTask = task || worker.currentTask;
+      state.bumpCompleted(1);
+      if (event.data?.filesModified) {
+        state.bumpFiles(event.data.filesModified);
+      } else {
+        state.bumpFiles(1);
+      }
+      if (region) {
+        recordRegionActivity(region.id, 1);
+      }
+      state.pushEvent({ type: 'task_complete', workerId: worker.id, details: `${worker.name}: ${worker.currentTask || 'Task'} complete.` });
+      break;
+    case 'error':
+      worker.status = 'blocked';
+      worker.errorMessage = event.data?.error || 'Agent error';
+      state.bumpFailed(1);
+      state.pushEvent({ type: 'error', workerId: worker.id, details: `${worker.name}: ${worker.errorMessage}` });
+      break;
+    case 'terminate':
+      worker.status = 'terminated';
+      state.pushEvent({ type: 'terminate', workerId: worker.id, details: `${worker.name} terminated.` });
+      state.upsertWorker({ ...worker, updatedAt: now });
+      setTimeout(() => state.removeWorker(worker.id), 900);
+      return;
+    case 'status':
+    default:
+      worker.status = event.data?.status || worker.status;
+      state.pushEvent({ type: 'status', workerId: worker.id, details: `${worker.name}: ${worker.status}` });
+      break;
+  }
+
+  worker.tokensUsed = tokens || worker.tokensUsed;
+  worker.updatedAt = now;
+  state.upsertWorker({ ...worker });
+  state.tickStats();
+}
