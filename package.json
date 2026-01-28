@@ -6,10 +6,20 @@
   "scripts": {
     "serve": "npx serve . -p 8080",
     "test": "npx playwright test",
-    "test:smoke": "npx playwright test smoke.spec.js"
+    "test:smoke": "npx playwright test smoke.spec.js",
+    "build:academy": "npx esbuild src/academy-entry.ts --bundle --format=esm --outfile=scripts/academy.js --minify",
+    "build": "npm run build:academy",
+    "test:academy": "npx tsx tests/academy-logic.test.ts",
+    "deploy": "npm run build && npx wrangler pages deploy ."
   },
   "devDependencies": {
-    "@playwright/test": "^1.40.0"
+    "@playwright/test": "^1.40.0",
+    "@types/node": "^22.10.2",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "esbuild": "^0.24.2",
+    "tsx": "^4.19.2",
+    "typescript": "^5.7.2"
   },
   "dependencies": {
     "three": "^0.170.0"

@@ -304,6 +304,9 @@
         </div>
       </div>
 
+      <!-- BlazeCraft Academy (React-powered training + progress loop) -->
+      <div id="academyRoot" class="wc3-academy-panel" role="region" aria-label="BlazeCraft Academy"></div>
+
       <!-- Job Panel (hidden by default, shown when runnerEnabled) -->
       <div id="jobPanel" class="wc3-job-panel" hidden aria-label="Agent Jobs">
         <div class="wc3-job-header">
@@ -422,6 +425,9 @@
     <div class="wc3-loading-text">Establishing Connection</div>
   </div>
 
+  <script defer src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script defer src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script type="module" src="scripts/academy.js"></script>
   <script type="module" src="scripts/main.js"></script>
 
   <!-- WC3 Wisp Particle System -->
