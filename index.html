@@ -152,7 +152,24 @@
           <span>Event Log</span>
           <span id="logStatus" class="tag tag-live">Live</span>
         </div>
-        <div id="logFeed" class="log-feed" role="log" aria-live="polite"></div>
+        <div id="logFeed" class="log-feed" role="log" aria-live="polite">
+          <!-- Loading state (shown during initial connection) -->
+          <div id="logLoading" class="state-container state-loading">
+            <div class="state-loading-spinner" aria-hidden="true"></div>
+            <span class="state-loading-text">Connecting to event stream...</span>
+          </div>
+          <!-- Empty state (shown when connected but no events) -->
+          <div id="logEmpty" class="state-container state-empty" hidden>
+            <span class="state-empty-icon" aria-hidden="true">📭</span>
+            <span class="state-empty-text">No events yet. Workers will report here.</span>
+          </div>
+          <!-- Error state (shown on connection failure) -->
+          <div id="logError" class="state-container state-error" hidden>
+            <span class="state-error-icon" aria-hidden="true">⚠️</span>
+            <span class="state-error-text">Connection lost.</span>
+            <button id="logRetry" class="state-retry-btn" type="button">Retry</button>
+          </div>
+        </div>
       </aside>
     </div>
 
@@ -239,9 +256,19 @@
           <span id="opsStatus" class="tag tag-live">Live</span>
         </div>
         <div id="opsFeed" class="wc3-ops-feed">
-          <div class="wc3-ops-loading" aria-label="Loading connection">
-            <div class="skeleton-line"></div>
-            <div class="skeleton-line short"></div>
+          <!-- Loading state -->
+          <div id="opsLoading" class="state-container state-loading">
+            <div class="state-loading-spinner" aria-hidden="true"></div>
+            <span class="state-loading-text">Connecting to BSI...</span>
+          </div>
+          <!-- Empty state -->
+          <div id="opsEmpty" class="state-container state-empty" hidden>
+            <span class="state-empty-text">No activity yet.</span>
+          </div>
+          <!-- Error state -->
+          <div id="opsError" class="state-container state-error" hidden>
+            <span class="state-error-text">Connection failed.</span>
+            <button id="opsRetry" class="state-retry-btn" type="button">Retry</button>
           </div>
         </div>
         <div class="wc3-ops-stats">
@@ -260,14 +287,77 @@
         </div>
         <!-- BSI Health Status -->
         <div id="healthPanel" class="wc3-health-panel" role="status" aria-live="polite" aria-label="BSI Service Status">
-          <div class="wc3-health-indicator">
+          <!-- Normal health indicator -->
+          <div id="healthNormal" class="wc3-health-indicator">
             <span class="wc3-health-dot" id="healthDot" data-status="unknown" aria-hidden="true"></span>
             <span class="wc3-health-label" id="healthLabel">BSI Status:</span>
             <span id="healthStatus" class="wc3-health-status" aria-describedby="healthLabel">Checking...</span>
           </div>
-          <div class="wc3-health-details" id="healthDetails">
+          <div id="healthDetails" class="wc3-health-details">
             <span class="wc3-health-latency">Latency: <span id="healthLatency" aria-label="Latency in milliseconds">--</span>ms</span>
           </div>
+          <!-- Error state with retry -->
+          <div id="healthError" class="state-container state-error" hidden>
+            <span class="state-error-text">Unable to reach BSI.</span>
+            <button id="healthRetry" class="state-retry-btn" type="button">Retry</button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Job Panel (hidden by default, shown when runnerEnabled) -->
+      <div id="jobPanel" class="wc3-job-panel" hidden aria-label="Agent Jobs">
+        <div class="wc3-job-header">
+          <span class="wc3-job-title">Agent Jobs</span>
+          <button id="jobPanelToggle" class="wc3-job-toggle" type="button" aria-label="Toggle job panel" aria-expanded="true">
+            <span aria-hidden="true">−</span>
+          </button>
+        </div>
+        <div id="jobPanelContent" class="wc3-job-content">
+          <!-- Create Job Form -->
+          <form id="jobForm" class="wc3-job-form">
+            <input
+              type="text"
+              id="jobCommand"
+              class="wc3-job-input"
+              placeholder="Enter command..."
+              aria-label="Job command"
+              required
+            />
+            <button type="submit" class="wc3-job-submit" aria-label="Create job">
+              <span aria-hidden="true">+</span> Run
+            </button>
+          </form>
+          <!-- Job List -->
+          <div id="jobList" class="wc3-job-list" role="list" aria-label="Job list">
+            <!-- Loading state -->
+            <div id="jobLoading" class="state-container state-loading" hidden>
+              <div class="state-loading-spinner" aria-hidden="true"></div>
+              <span class="state-loading-text">Loading jobs...</span>
+            </div>
+            <!-- Empty state -->
+            <div id="jobEmpty" class="state-container state-empty">
+              <span class="state-empty-icon" aria-hidden="true">📋</span>
+              <span class="state-empty-text">No jobs yet. Create one above.</span>
+            </div>
+            <!-- Error state -->
+            <div id="jobError" class="state-container state-error" hidden>
+              <span class="state-error-text">Failed to load jobs.</span>
+              <button id="jobRetry" class="state-retry-btn" type="button">Retry</button>
+            </div>
+          </div>
+          <!-- SSE Log Viewer (shown when job selected) -->
+          <div id="jobLogs" class="wc3-job-logs" hidden aria-label="Job logs">
+            <div class="wc3-job-logs-header">
+              <span id="jobLogsTitle" class="wc3-job-logs-title">Job Logs</span>
+              <button id="jobLogsClose" class="wc3-job-logs-close" type="button" aria-label="Close logs">×</button>
+            </div>
+            <div id="jobLogsFeed" class="wc3-job-logs-feed" role="log" aria-live="polite"></div>
+          </div>
+        </div>
+        <!-- Runner not available message (when runnerEnabled but runner is down) -->
+        <div id="jobUnavailable" class="wc3-job-unavailable" hidden>
+          <span class="state-error-icon" aria-hidden="true">⚠️</span>
+          <span>Runner not available</span>
         </div>
       </div>
 

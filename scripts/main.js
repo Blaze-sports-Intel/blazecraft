@@ -7,9 +7,11 @@ import { clamp } from './map.js';
 import { OpsBridge } from '../src/ops-bridge.js';
 import { config } from '../src/config.js';
 import { HealthBridge } from '../src/health-bridge.js';
+import { AgentBridge } from '../src/agent-bridge.js';
 import { AlertSystem, ServiceAlerts } from './alerts.js';
 import { initWispSystem } from './wc3-wisps.js';
 import { initTooltipSystem } from './wc3-tooltips.js';
+import { OnboardingTour, shouldShowOnboarding } from '../src/onboarding.js';
 
 /** @type {number} */
 let opsEventCount = 0;
@@ -76,13 +78,121 @@ function initOpsFeed(demoMode) {
   const feedEl = document.getElementById('opsFeed');
   if (!feedEl) return;
 
-  feedEl.innerHTML = '';
+  // Hide state containers, show content
+  setOpsState('content');
+
+  // Clear any existing lines except state containers
+  const existingLines = feedEl.querySelectorAll('.wc3-ops-line');
+  existingLines.forEach(line => line.remove());
+
   const line = document.createElement('div');
   line.className = 'wc3-ops-line';
   line.textContent = demoMode
     ? 'Demo mode active. Monitoring simulated BSI services.'
     : 'Connected to BSI services. Monitoring live data.';
   feedEl.appendChild(line);
+}
+
+/**
+ * Set Event Log state (loading, empty, error, content)
+ * @param {'loading' | 'empty' | 'error' | 'content'} stateName
+ */
+function setLogState(stateName) {
+  const loading = document.getElementById('logLoading');
+  const empty = document.getElementById('logEmpty');
+  const error = document.getElementById('logError');
+
+  if (loading) loading.hidden = stateName !== 'loading';
+  if (empty) empty.hidden = stateName !== 'empty';
+  if (error) error.hidden = stateName !== 'error';
+
+  // Update status tag
+  const statusEl = document.getElementById('logStatus');
+  if (statusEl) {
+    if (stateName === 'loading') {
+      statusEl.textContent = 'Connecting';
+      statusEl.className = 'tag';
+    } else if (stateName === 'error') {
+      statusEl.textContent = 'Offline';
+      statusEl.className = 'tag';
+    } else {
+      statusEl.textContent = 'Live';
+      statusEl.className = 'tag tag-live';
+    }
+  }
+}
+
+/**
+ * Set Ops Feed state (loading, empty, error, content)
+ * @param {'loading' | 'empty' | 'error' | 'content'} stateName
+ */
+function setOpsState(stateName) {
+  const loading = document.getElementById('opsLoading');
+  const empty = document.getElementById('opsEmpty');
+  const error = document.getElementById('opsError');
+
+  if (loading) loading.hidden = stateName !== 'loading';
+  if (empty) empty.hidden = stateName !== 'empty';
+  if (error) error.hidden = stateName !== 'error';
+}
+
+/**
+ * Set Health Panel state (normal, error)
+ * @param {'normal' | 'error'} stateName
+ */
+function setHealthState(stateName) {
+  const normal = document.getElementById('healthNormal');
+  const details = document.getElementById('healthDetails');
+  const error = document.getElementById('healthError');
+
+  if (normal) normal.hidden = stateName === 'error';
+  if (details) details.hidden = stateName === 'error';
+  if (error) error.hidden = stateName !== 'error';
+}
+
+/**
+ * Set Job Panel state (loading, empty, error, content)
+ * @param {'loading' | 'empty' | 'error' | 'content'} stateName
+ */
+function setJobState(stateName) {
+  const loading = document.getElementById('jobLoading');
+  const empty = document.getElementById('jobEmpty');
+  const error = document.getElementById('jobError');
+
+  if (loading) loading.hidden = stateName !== 'loading';
+  if (empty) empty.hidden = stateName !== 'empty';
+  if (error) error.hidden = stateName !== 'error';
+}
+
+/**
+ * Format elapsed time for job display
+ * @param {string} startedAt - ISO timestamp
+ * @returns {string}
+ */
+function formatJobElapsed(startedAt) {
+  if (!startedAt) return '--:--';
+  const elapsed = Date.now() - new Date(startedAt).getTime();
+  const mins = Math.floor(elapsed / 60000);
+  const secs = Math.floor((elapsed % 60000) / 1000);
+  return `${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+}
+
+/**
+ * Render a job item
+ * @param {import('../src/agent-bridge.js').JobResponse} job
+ * @returns {HTMLElement}
+ */
+function createJobElement(job) {
+  const el = document.createElement('div');
+  el.className = 'wc3-job-item';
+  el.dataset.jobId = job.id;
+  el.setAttribute('role', 'listitem');
+  el.innerHTML = `
+    <span class="wc3-job-status" data-status="${job.status}" aria-label="${job.status}"></span>
+    <span class="wc3-job-command">${job.command}</span>
+    <span class="wc3-job-time">${formatJobElapsed(job.started_at)}</span>
+  `;
+  return el;
 }
 
 async function init() {
@@ -170,12 +280,48 @@ async function init() {
         statusEl.className = connected ? 'tag tag-live' : 'tag';
       }
 
-      // Connection status alerts
-      if (!connected) {
+      // Update ops feed state
+      if (connected) {
+        setOpsState('content');
+        setLogState('content');
+      } else {
+        setOpsState('error');
+        setLogState('error');
         alertSystem.warning('Connection Lost', 'Attempting to reconnect to BSI services...');
       }
     }
   });
+
+  // Wire up retry buttons before connecting
+  const logRetry = document.getElementById('logRetry');
+  const opsRetry = document.getElementById('opsRetry');
+  const healthRetry = document.getElementById('healthRetry');
+
+  logRetry?.addEventListener('click', async () => {
+    setLogState('loading');
+    try {
+      await opsBridge.connect();
+      setLogState('content');
+    } catch {
+      setLogState('error');
+    }
+  });
+
+  opsRetry?.addEventListener('click', async () => {
+    setOpsState('loading');
+    try {
+      await opsBridge.connect();
+      setOpsState('content');
+    } catch {
+      setOpsState('error');
+    }
+  });
+
+  healthRetry?.addEventListener('click', () => {
+    setHealthState('normal');
+    healthBridge.checkNow();
+  });
+
   await opsBridge.connect();
 
   // Initialize HealthBridge for BSI health monitoring
@@ -185,6 +331,15 @@ async function init() {
     const status = document.getElementById('healthStatus');
     const latency = document.getElementById('healthLatency');
     const panel = document.getElementById('healthPanel');
+
+    if (health.error) {
+      // Show error state on health check failure
+      setHealthState('error');
+      return;
+    }
+
+    // Show normal state
+    setHealthState('normal');
 
     if (health.current) {
       const statusText = health.current.status === 'up' ? 'Online' :
@@ -210,6 +365,167 @@ async function init() {
   });
   healthBridge.startPolling();
 
+  // Initialize Job Panel (only if runnerEnabled)
+  const jobPanel = document.getElementById('jobPanel');
+  const jobPanelToggle = document.getElementById('jobPanelToggle');
+  const jobForm = document.getElementById('jobForm');
+  const jobCommand = document.getElementById('jobCommand');
+  const jobList = document.getElementById('jobList');
+  const jobLogs = document.getElementById('jobLogs');
+  const jobLogsFeed = document.getElementById('jobLogsFeed');
+  const jobLogsClose = document.getElementById('jobLogsClose');
+  const jobLogsTitle = document.getElementById('jobLogsTitle');
+  const jobRetry = document.getElementById('jobRetry');
+
+  if (config.features.runnerEnabled && jobPanel) {
+    jobPanel.hidden = false;
+    const agentBridge = new AgentBridge();
+
+    /** @type {string | null} */
+    let selectedJobId = null;
+    /** @type {(() => void) | null} */
+    let unsubscribeJob = null;
+    /** @type {Map<string, import('../src/agent-bridge.js').JobResponse>} */
+    const jobsCache = new Map();
+
+    // Panel toggle
+    jobPanelToggle?.addEventListener('click', () => {
+      jobPanel.classList.toggle('collapsed');
+      const isCollapsed = jobPanel.classList.contains('collapsed');
+      jobPanelToggle.setAttribute('aria-expanded', String(!isCollapsed));
+      jobPanelToggle.querySelector('span').textContent = isCollapsed ? '+' : '−';
+    });
+
+    // Render job list
+    function renderJobList() {
+      // Clear existing job items (keep state containers)
+      const existingItems = jobList?.querySelectorAll('.wc3-job-item');
+      existingItems?.forEach(item => item.remove());
+
+      const jobs = Array.from(jobsCache.values()).sort((a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
+
+      if (jobs.length === 0) {
+        setJobState('empty');
+        return;
+      }
+
+      setJobState('content');
+      jobs.slice(0, 10).forEach(job => {
+        const el = createJobElement(job);
+        if (job.id === selectedJobId) {
+          el.classList.add('selected');
+        }
+        el.addEventListener('click', () => selectJob(job.id));
+        jobList?.appendChild(el);
+      });
+    }
+
+    // Select job and show logs
+    function selectJob(jobId) {
+      // Unsubscribe from previous job
+      if (unsubscribeJob) {
+        unsubscribeJob();
+        unsubscribeJob = null;
+      }
+
+      selectedJobId = jobId;
+      renderJobList();
+
+      // Clear logs feed
+      if (jobLogsFeed) jobLogsFeed.innerHTML = '';
+      if (jobLogs) jobLogs.hidden = false;
+      if (jobLogsTitle) jobLogsTitle.textContent = `Job: ${jobId.slice(0, 12)}...`;
+
+      // Subscribe to job events
+      unsubscribeJob = agentBridge.subscribeToJob(jobId, (event) => {
+        const line = document.createElement('div');
+        line.className = 'wc3-job-log-line';
+        line.dataset.level = event.level;
+        line.textContent = `[${new Date(event.ts).toLocaleTimeString()}] ${event.message}`;
+        jobLogsFeed?.appendChild(line);
+        jobLogsFeed?.scrollTo(0, jobLogsFeed.scrollHeight);
+      });
+    }
+
+    // Close logs viewer
+    jobLogsClose?.addEventListener('click', () => {
+      if (unsubscribeJob) {
+        unsubscribeJob();
+        unsubscribeJob = null;
+      }
+      selectedJobId = null;
+      if (jobLogs) jobLogs.hidden = true;
+      renderJobList();
+    });
+
+    // Form submission - create job
+    jobForm?.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      const command = jobCommand?.value?.trim();
+      if (!command) return;
+
+      const submitBtn = jobForm.querySelector('button[type="submit"]');
+      if (submitBtn) submitBtn.disabled = true;
+
+      try {
+        const job = await agentBridge.createJob({
+          type: 'task',
+          repo_ref: 'local',
+          command,
+        });
+        jobsCache.set(job.id, job);
+        if (jobCommand) jobCommand.value = '';
+        renderJobList();
+        selectJob(job.id);
+        alertSystem.info('Job Created', `Running: ${command.slice(0, 30)}...`, { duration: 3000 });
+      } catch (err) {
+        alertSystem.warning('Job Failed', err.message || 'Failed to create job');
+      } finally {
+        if (submitBtn) submitBtn.disabled = false;
+      }
+    });
+
+    // Retry button
+    jobRetry?.addEventListener('click', async () => {
+      setJobState('loading');
+      try {
+        const jobs = await agentBridge.listJobs({ limit: 10 });
+        jobsCache.clear();
+        jobs.forEach(job => jobsCache.set(job.id, job));
+        renderJobList();
+      } catch {
+        setJobState('error');
+      }
+    });
+
+    // Initial load
+    (async () => {
+      setJobState('loading');
+      try {
+        const jobs = await agentBridge.listJobs({ limit: 10 });
+        jobs.forEach(job => jobsCache.set(job.id, job));
+        renderJobList();
+      } catch {
+        setJobState('empty'); // Show empty on initial failure (demo mode creates empty list)
+      }
+    })();
+
+    // Update job times periodically
+    setInterval(() => {
+      const items = jobList?.querySelectorAll('.wc3-job-item');
+      items?.forEach(item => {
+        const jobId = item.dataset.jobId;
+        const job = jobsCache.get(jobId);
+        if (job && job.started_at && job.status === 'running') {
+          const timeEl = item.querySelector('.wc3-job-time');
+          if (timeEl) timeEl.textContent = formatJobElapsed(job.started_at);
+        }
+      });
+    }, 1000);
+  }
+
   // Initialize WC3 magical wisp particle system
   const wispSystem = initWispSystem();
   if (wispSystem) {
@@ -229,6 +545,43 @@ async function init() {
 
   // Clear "Awaiting connection..." and show status message
   initOpsFeed(config.demo);
+
+  // Initialize onboarding tour (shows after welcome overlay is dismissed)
+  const welcomeOverlay = document.getElementById('welcomeOverlay');
+  const onboardingTour = new OnboardingTour();
+
+  // Check if we should show onboarding after welcome is dismissed
+  function maybeStartTour() {
+    if (shouldShowOnboarding()) {
+      // Small delay to let the UI settle after welcome dismissal
+      setTimeout(() => {
+        onboardingTour.start(() => {
+          state.pushScoutLine('Onboarding complete. Welcome, Commander!');
+        });
+      }, 500);
+    }
+  }
+
+  // If welcome overlay exists and is visible, wait for it to be dismissed
+  if (welcomeOverlay && !welcomeOverlay.hidden) {
+    const observer = new MutationObserver((mutations) => {
+      for (const mutation of mutations) {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'hidden') {
+          if (welcomeOverlay.hidden) {
+            observer.disconnect();
+            maybeStartTour();
+          }
+        }
+      }
+    });
+    observer.observe(welcomeOverlay, { attributes: true });
+  } else {
+    // Welcome overlay already dismissed or doesn't exist
+    maybeStartTour();
+  }
+
+  // Expose tour for testing/debugging
+  window.onboardingTour = onboardingTour;
 
   // Add initial event to the Event Log so it's not empty on start
   state.pushEvent({
