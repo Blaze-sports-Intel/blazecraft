@@ -4774,6 +4774,248 @@ body:not([data-mode]) .wc3-game-area {
   color: var(--muted);
 }
 
+/* BlazeCraft Academy Panel */
+.wc3-academy-panel {
+  background: linear-gradient(160deg, rgba(13, 15, 26, 0.92), rgba(8, 9, 16, 0.95));
+  border: 1px solid rgba(155, 130, 255, 0.35);
+  border-radius: 18px;
+  padding: 18px 20px;
+  min-width: 320px;
+  max-width: 520px;
+  box-shadow: 0 16px 40px rgba(8, 10, 22, 0.4);
+}
+
+.academy-panel-inner {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+  color: #eef0ff;
+  font-family: var(--sans);
+}
+
+.academy-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.academy-kicker {
+  font-size: 0.75rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: rgba(255, 203, 148, 0.85);
+  font-weight: 700;
+}
+
+.academy-title {
+  margin: 4px 0 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+}
+
+.academy-meta {
+  text-align: right;
+  font-size: 0.75rem;
+  color: rgba(214, 220, 255, 0.7);
+}
+
+.academy-progress {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.academy-progress-bar {
+  width: 100%;
+  height: 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.academy-progress-fill {
+  height: 100%;
+  background: linear-gradient(90deg, rgba(255, 174, 78, 0.9), rgba(255, 99, 142, 0.95));
+  transition: width 0.3s ease;
+}
+
+.academy-progress-meta {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.75rem;
+  color: rgba(214, 220, 255, 0.8);
+}
+
+.academy-grid {
+  display: grid;
+  grid-template-columns: minmax(0, 1.2fr) minmax(0, 0.8fr);
+  gap: 14px;
+}
+
+.academy-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.academy-step {
+  border: 1px solid rgba(155, 130, 255, 0.2);
+  border-radius: 14px;
+  padding: 12px 14px;
+  background: rgba(12, 14, 26, 0.7);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.academy-step.is-complete {
+  border-color: rgba(106, 230, 170, 0.5);
+  background: rgba(20, 44, 34, 0.55);
+}
+
+.academy-step-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.academy-step-title {
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.academy-step-tag {
+  font-size: 0.6rem;
+  letter-spacing: 0.08em;
+  padding: 2px 6px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.08);
+  color: #f9f4ff;
+  font-weight: 700;
+}
+
+.academy-step-tag.tag-command {
+  background: rgba(99, 156, 255, 0.25);
+}
+
+.academy-step-tag.tag-review {
+  background: rgba(241, 196, 80, 0.2);
+}
+
+.academy-step-tag.tag-ship {
+  background: rgba(255, 107, 129, 0.22);
+}
+
+.academy-step-tag.tag-focus {
+  background: rgba(122, 216, 199, 0.22);
+}
+
+.academy-step-desc {
+  margin: 0;
+  font-size: 0.8rem;
+  color: rgba(214, 220, 255, 0.8);
+}
+
+.academy-step-footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 8px;
+}
+
+.academy-step-reward {
+  font-size: 0.7rem;
+  color: rgba(255, 204, 127, 0.9);
+  font-weight: 600;
+}
+
+.academy-step-toggle {
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  background: rgba(255, 255, 255, 0.08);
+  color: #f8f7ff;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.7rem;
+  cursor: pointer;
+}
+
+.academy-step.is-complete .academy-step-toggle {
+  background: rgba(106, 230, 170, 0.2);
+  border-color: rgba(106, 230, 170, 0.6);
+  color: #d9ffea;
+}
+
+.academy-side {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.academy-card {
+  background: rgba(11, 12, 20, 0.75);
+  border: 1px solid rgba(155, 130, 255, 0.2);
+  border-radius: 14px;
+  padding: 12px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.academy-card-title {
+  margin: 0;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.academy-card-value {
+  margin: 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #ffdd96;
+}
+
+.academy-card-sub {
+  margin: 0;
+  font-size: 0.7rem;
+  color: rgba(214, 220, 255, 0.7);
+}
+
+.academy-action {
+  border: none;
+  background: linear-gradient(120deg, rgba(255, 147, 80, 0.85), rgba(255, 99, 142, 0.85));
+  color: #fff8f0;
+  padding: 6px 10px;
+  border-radius: 10px;
+  font-size: 0.7rem;
+  font-weight: 700;
+  cursor: pointer;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+@media (max-width: 1200px) {
+  .wc3-academy-panel {
+    max-width: 100%;
+  }
+
+  .academy-grid {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .academy-header {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .academy-meta {
+    text-align: left;
+  }
+}
+
 /* Reduced motion */
 @media (prefers-reduced-motion: reduce) {
   .tour-overlay,
