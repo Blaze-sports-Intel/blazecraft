@@ -1,5 +1,16 @@
 import { REGIONS, clamp, regionAt } from './map.js';
 
+const SELECT_FLASH_MS = 150;
+const SELECT_FLASH_ALPHA = 0.28;
+const SELECTED_GLOW_ALPHA = 0.2;
+const NON_SELECTED_DIM_ALPHA = 0.86;
+const BADGE_MAX_SIZE = 9;
+const BADGE_MIN_SIZE = 4;
+const BADGE_Y_OFFSET = 22;
+const BADGE_ALPHA = 0.9;
+const BADGE_SQUARE_SCALE = 0.85;
+const BADGE_SQUARE_SIZE = 1.7;
+
 /**
  * Canvas renderer for the main map + minimap.
  */
@@ -47,6 +58,9 @@ export class Renderer {
     this.showUnits = true;
 
     this.world = { w: 1280, h: 720 };
+
+    /** @type {string|null} */
+    this.hoveredWorkerId = null;
 
     // Procedural terrain
     this.terrainElements = [];
@@ -297,8 +311,11 @@ export class Renderer {
     for (const p of this.pings) this.drawPing(p, now);
 
     // workers
+    const hasSelection = state.selected.size > 0;
     for (const w of state.workers.values()) {
-      this.drawWorker(w, state.selected.has(w.id), now);
+      const isSelected = state.selected.has(w.id);
+      const isHovered = this.hoveredWorkerId === w.id;
+      this.drawWorker(w, isSelected, isHovered, hasSelection, now, state.selectionPulse);
     }
 
     // selection marquee
@@ -728,13 +745,27 @@ export class Renderer {
     ctx.restore();
   }
 
-  drawWorker(worker, selected, now) {
+  /**
+   * @param {import('./game-state.js').Worker} worker
+   * @param {boolean} selected
+   * @param {boolean} hovered
+   * @param {boolean} hasSelection
+   * @param {number} now
+   * @param {{ids:Set<string>, at:number}} selectionPulse
+   */
+  drawWorker(worker, selected, hovered, hasSelection, now, selectionPulse) {
     const ctx = this.ctx;
     const x = worker.position.x;
     const y = worker.position.y;
 
     const bob = Math.sin((now / 250) + (x + y) * 0.01) * 1.2;
     const walkCycle = Math.sin((now / 150) + (x + y) * 0.02);
+
+    const dimmed = hasSelection && !selected;
+    if (dimmed) {
+      ctx.save();
+      ctx.globalAlpha = NON_SELECTED_DIM_ALPHA;
+    }
 
     // Selection circle on ground
     if (selected) {
@@ -750,6 +781,19 @@ export class Renderer {
       ctx.restore();
     }
 
+    // Selection flash on newly selected units
+    const pulseAge = now - selectionPulse.at;
+    if (selected && selectionPulse.ids.has(worker.id) && pulseAge <= SELECT_FLASH_MS) {
+      const pulseT = 1 - (pulseAge / SELECT_FLASH_MS);
+      ctx.save();
+      ctx.globalAlpha = pulseT * SELECT_FLASH_ALPHA;
+      ctx.fillStyle = '#FFE7A6';
+      ctx.beginPath();
+      ctx.ellipse(x, y + 4, 18, 10, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
     // Shadow
     ctx.save();
     ctx.fillStyle = 'rgba(0,0,0,0.3)';
@@ -761,8 +805,22 @@ export class Renderer {
     // Draw character sprite
     this.drawCharacterSprite(ctx, x, y + bob, worker.status, now, walkCycle);
 
+    if (selected) {
+      ctx.save();
+      ctx.globalAlpha = SELECTED_GLOW_ALPHA;
+      ctx.fillStyle = '#FFD89C';
+      ctx.beginPath();
+      ctx.arc(x, y + bob - 6, 10, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
+    }
+
     // Status indicators above head
     this.drawStatusIndicator(ctx, x, y + bob, worker.status, now);
+
+    if (selected || hovered) {
+      this.drawUnitBadge(ctx, x, y + bob - BADGE_Y_OFFSET, worker.status);
+    }
 
     // Nameplate
     ctx.save();
@@ -773,6 +831,76 @@ export class Renderer {
     ctx.shadowBlur = 4;
     ctx.fillText(worker.name, x, y + bob + 28);
     ctx.restore();
+
+    if (dimmed) {
+      ctx.restore();
+    }
+  }
+
+  /**
+   * @param {CanvasRenderingContext2D} ctx
+   * @param {number} x
+   * @param {number} y
+   * @param {import('./game-state.js').Worker['status']} status
+   */
+  drawUnitBadge(ctx, x, y, status) {
+    const size = clamp(BADGE_MAX_SIZE / this.camera.zoom, BADGE_MIN_SIZE, BADGE_MAX_SIZE);
+    const role = this.getRoleBadge(status);
+
+    ctx.save();
+    ctx.globalAlpha = BADGE_ALPHA;
+    ctx.translate(x, y);
+    ctx.fillStyle = role.fill;
+    ctx.strokeStyle = role.stroke;
+    ctx.lineWidth = 1;
+
+    if (role.shape === 'diamond') {
+      ctx.beginPath();
+      ctx.moveTo(0, -size);
+      ctx.lineTo(size, 0);
+      ctx.lineTo(0, size);
+      ctx.lineTo(-size, 0);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    } else if (role.shape === 'triangle') {
+      ctx.beginPath();
+      ctx.moveTo(0, -size);
+      ctx.lineTo(size, size);
+      ctx.lineTo(-size, size);
+      ctx.closePath();
+      ctx.fill();
+      ctx.stroke();
+    } else if (role.shape === 'square') {
+      ctx.beginPath();
+      ctx.rect(-size * BADGE_SQUARE_SCALE, -size * BADGE_SQUARE_SCALE, size * BADGE_SQUARE_SIZE, size * BADGE_SQUARE_SIZE);
+      ctx.fill();
+      ctx.stroke();
+    } else {
+      ctx.beginPath();
+      ctx.arc(0, 0, size, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
+
+  /**
+   * @param {import('./game-state.js').Worker['status']} status
+   */
+  getRoleBadge(status) {
+    const palette = {
+      working: { fill: '#FFD89C', stroke: '#B8860B', shape: 'square' },
+      moving: { fill: '#9AD7FF', stroke: '#3A6FA0', shape: 'triangle' },
+      idle: { fill: '#C4E1B2', stroke: '#5A8A44', shape: 'circle' },
+      blocked: { fill: '#FF9F9F', stroke: '#8B3030', shape: 'diamond' },
+      hold: { fill: '#F6C37A', stroke: '#A06A1C', shape: 'square' },
+      complete: { fill: '#FFE89C', stroke: '#8B6914', shape: 'circle' },
+      terminated: { fill: '#9B9B9B', stroke: '#4A4A4A', shape: 'diamond' },
+    };
+
+    return palette[status] || { fill: '#C9C9C9', stroke: '#4A4A4A', shape: 'circle' };
   }
 
   // Draw a WC3-style character sprite

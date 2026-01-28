@@ -2,6 +2,41 @@
  * @typedef {import('./game-state.js').GameState} GameState
  */
 
+const COMMAND_ACK_DURATION_MS = 900;
+const COMMAND_INVALID_DURATION_MS = 600;
+
+/** @param {import('./game-state.js').Worker} worker */
+function getUnitTypeKey(worker) {
+  const statusMap = {
+    working: 'builder',
+    moving: 'runner',
+    idle: 'sentinel',
+    blocked: 'blocked',
+    hold: 'guardian',
+    complete: 'veteran',
+    terminated: 'fallen',
+  };
+  return statusMap[worker.status] || 'agent';
+}
+
+/** @param {import('./game-state.js').Worker[]} workers */
+function getPrimaryType(workers) {
+  const counts = new Map();
+  for (const w of workers) {
+    const key = getUnitTypeKey(w);
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+  let best = 'agent';
+  let bestCount = 0;
+  for (const [key, count] of counts.entries()) {
+    if (count > bestCount) {
+      best = key;
+      bestCount = count;
+    }
+  }
+  return best;
+}
+
 export class CommandCenter {
   /**
    * @param {GameState} state
@@ -24,6 +59,7 @@ export class CommandCenter {
    */
   exec(cmd) {
     const sel = this.state.getSelectedWorkers();
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
 
     // Scan works on all workers, doesn't require selection
     if (cmd === 'scan') {
@@ -38,19 +74,28 @@ export class CommandCenter {
         : 'Scan complete. No active workers.';
       this.state.pushScoutLine(msg);
       this.state.pushEvent({ type: 'command', workerId: '', details: msg });
+      this.state.setCommandFeedback({ type: 'ack', at: now, label: 'Scan complete' });
+      setTimeout(() => this.state.setCommandFeedback(null), COMMAND_ACK_DURATION_MS);
       return;
     }
 
     // Other commands require selection
     if (!sel.length) {
       this.state.pushScoutLine('No worker selected. Select a worker first.');
+      this.state.setCommandFeedback({ type: 'invalid', at: now, label: 'No selection' });
+      setTimeout(() => this.state.setCommandFeedback(null), COMMAND_INVALID_DURATION_MS);
       return;
     }
+
+    const primaryType = getPrimaryType(sel);
+    let applied = false;
 
     if (cmd === 'reassign') {
       this.assignMode = true;
       this.state.pushEvent({ type: 'command', workerId: sel[0].id, details: `Assign mode: right-click a region.` });
       this.state.pushScoutLine('Assign mode: right-click a region to send selected workers.');
+      this.state.setCommandFeedback({ type: 'ack', at: now, icon: primaryType, label: 'Assign mode' });
+      setTimeout(() => this.state.setCommandFeedback(null), COMMAND_ACK_DURATION_MS);
       return;
     }
 
@@ -62,6 +107,7 @@ export class CommandCenter {
         w.updatedAt = Date.now();
         this.state.upsertWorker({ ...w });
         this.state.pushEvent({ type: 'command', workerId: w.id, details: `Stopped.` });
+        applied = true;
       }
 
       if (cmd === 'hold') {
@@ -70,6 +116,7 @@ export class CommandCenter {
           w.updatedAt = Date.now();
           this.state.upsertWorker({ ...w });
           this.state.pushEvent({ type: 'command', workerId: w.id, details: `Held.` });
+          applied = true;
         }
       }
 
@@ -79,6 +126,7 @@ export class CommandCenter {
           w.updatedAt = Date.now();
           this.state.upsertWorker({ ...w });
           this.state.pushEvent({ type: 'command', workerId: w.id, details: `Resumed.` });
+          applied = true;
         }
       }
 
@@ -88,6 +136,7 @@ export class CommandCenter {
           : `Inspect: ${w.currentTask || 'No task'}`;
         this.state.pushEvent({ type: 'command', workerId: w.id, details: detail });
         this.state.pushScoutLine(detail);
+        applied = true;
       }
 
       if (cmd === 'terminate') {
@@ -96,6 +145,7 @@ export class CommandCenter {
         this.state.upsertWorker({ ...w });
         this.state.pushEvent({ type: 'terminate', workerId: w.id, details: `${w.name} terminated.` });
         setTimeout(() => this.state.removeWorker(w.id), 800);
+        applied = true;
       }
 
       if (cmd === 'logs') {
@@ -105,12 +155,14 @@ export class CommandCenter {
           : 'No recent events.';
         this.state.pushScoutLine(`[${w.name}] ${summary}`);
         this.state.pushEvent({ type: 'command', workerId: w.id, details: `Logs: ${workerEvents.length} recent events.` });
+        applied = true;
       }
 
       if (cmd === 'files') {
         const fileCount = Math.floor(w.tokensUsed / 100);
         this.state.pushScoutLine(`[${w.name}] Files touched: ~${fileCount}`);
         this.state.pushEvent({ type: 'command', workerId: w.id, details: `Files: ~${fileCount} touched.` });
+        applied = true;
       }
 
       if (cmd === 'notes') {
@@ -123,6 +175,7 @@ export class CommandCenter {
         }
         this.state.pushScoutLine(`[${w.name}] ${note}`);
         this.state.pushEvent({ type: 'command', workerId: w.id, details: note });
+        applied = true;
       }
 
       if (cmd === 'focus') {
@@ -130,6 +183,7 @@ export class CommandCenter {
           this.onFocus(w.position.x, w.position.y);
         }
         this.state.pushEvent({ type: 'command', workerId: w.id, details: `Focused on ${w.name}.` });
+        applied = true;
       }
 
       if (cmd === 'guard') {
@@ -143,7 +197,16 @@ export class CommandCenter {
           this.state.pushScoutLine(`[${w.name}] Guard mode on. Auto-reassign when idle.`);
           this.state.pushEvent({ type: 'command', workerId: w.id, details: `Guard mode enabled.` });
         }
+        applied = true;
       }
+    }
+
+    if (applied) {
+      this.state.setCommandFeedback({ type: 'ack', at: now, icon: primaryType, label: 'Order received' });
+      setTimeout(() => this.state.setCommandFeedback(null), COMMAND_ACK_DURATION_MS);
+    } else {
+      this.state.setCommandFeedback({ type: 'invalid', at: now, label: 'No effect' });
+      setTimeout(() => this.state.setCommandFeedback(null), COMMAND_INVALID_DURATION_MS);
     }
 
   }
@@ -154,6 +217,7 @@ export class CommandCenter {
   assignSelectedTo(region) {
     const sel = this.state.getSelectedWorkers();
     if (!sel.length) return;
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
 
     const ids = sel.map(w => w.id);
     if (this.bridge.manualAssign) {
@@ -170,5 +234,8 @@ export class CommandCenter {
     }
 
     this.assignMode = false;
+    const primaryType = getPrimaryType(sel);
+    this.state.setCommandFeedback({ type: 'ack', at: now, icon: primaryType, label: 'Order received' });
+    setTimeout(() => this.state.setCommandFeedback(null), COMMAND_ACK_DURATION_MS);
   }
 }

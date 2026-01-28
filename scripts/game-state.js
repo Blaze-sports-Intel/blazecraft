@@ -15,6 +15,12 @@ export class GameState {
     this.events = [];
     /** @type {Set<string>} */
     this.selected = new Set();
+    /** @type {number} */
+    this.selectionVersion = 0;
+    /** @type {{ids:Set<string>, at:number}} */
+    this.selectionPulse = { ids: new Set(), at: 0 };
+    /** @type {{type:'ack'|'invalid', at:number, icon?:string, label?:string}|null} */
+    this.commandFeedback = null;
 
     this.startedAt = Date.now();
 
@@ -98,7 +104,19 @@ export class GameState {
 
   /** @param {string[]} ids */
   setSelected(ids) {
+    const prev = this.selected;
     this.selected = new Set(ids);
+    this.selectionVersion += 1;
+
+    const newlySelected = ids.filter((id) => !prev.has(id));
+    const now = typeof performance !== 'undefined' ? performance.now() : Date.now();
+    this.selectionPulse = { ids: new Set(newlySelected), at: now };
+    this.notify();
+  }
+
+  /** @param {{type:'ack'|'invalid', at:number, icon?:string, label?:string}|null} feedback */
+  setCommandFeedback(feedback) {
+    this.commandFeedback = feedback;
     this.notify();
   }
 

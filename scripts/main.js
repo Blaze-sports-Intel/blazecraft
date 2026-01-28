@@ -260,6 +260,9 @@ async function init() {
   let selectStart = { x: 0, y: 0 };
 
   mapCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
+  mapCanvas.addEventListener('mouseleave', () => {
+    renderer.hoveredWorkerId = null;
+  });
 
   mapCanvas.addEventListener('mousedown', (e) => {
     // middle button: pan
@@ -310,6 +313,12 @@ async function init() {
     if (isSelecting) {
       const wpt = renderer.screenToWorld(e.clientX, e.clientY);
       renderer.setSelection(true, selectStart.x, selectStart.y, wpt.x, wpt.y);
+    }
+
+    if (!isSelecting && !isPanning) {
+      const wpt = renderer.screenToWorld(e.clientX, e.clientY);
+      const hit = hitTestWorker(state, wpt.x, wpt.y, renderer.camera.zoom);
+      renderer.hoveredWorkerId = hit ? hit.id : null;
     }
   });
 
