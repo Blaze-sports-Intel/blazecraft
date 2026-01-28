@@ -1,0 +1,20 @@
+name = "bsi-agent-bridge"
+main = "index.ts"
+compatibility_date = "2024-01-01"
+
+[vars]
+ENVIRONMENT = "development"
+TIMEZONE = "America/Chicago"
+
+[[d1_databases]]
+binding = "BSI_AGENT_DB"
+database_name = "bsi-game-db"
+database_id = "88eb676f-af0f-470c-a46a-b9429f5b51f3"
+
+[[routes]]
+pattern = "blazecraft.app/api/agents/*"
+zone_name = "blazecraft.app"
+
+# Deploy:
+# wrangler d1 execute bsi-game-db --file=./schema.sql
+# wrangler deploy --env production
