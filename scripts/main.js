@@ -3,8 +3,9 @@ import { Renderer } from './renderer.js';
 import { UIPanels } from './ui-panels.js';
 import { MockBridge } from './mock-data.js';
 import { CommandCenter } from './commands.js';
-import { clamp } from './map.js';
+import { clamp, randomPointIn, REGIONS } from './map.js';
 import { OpsBridge } from '../src/ops-bridge.js';
+import { AgentBridge } from '../src/agent-bridge.js';
 import { AlertSystem, ServiceAlerts } from './alerts.js';
 import { initWispSystem } from './wc3-wisps.js';
 import { initTooltipSystem } from './wc3-tooltips.js';
@@ -33,6 +34,167 @@ function updateMetricsUI(state) {
   if (workersEl) workersEl.textContent = String(state.workers.size);
   if (failedEl) failedEl.textContent = String(state.stats.failed).padStart(2, '0');
   if (tokensEl) tokensEl.textContent = String(state.stats.tokens);
+}
+
+/**
+ * @param {import('./game-state.js').GameState} state
+ * @param {import('./renderer.js').Renderer} renderer
+ * @param {import('../src/agent-bridge.js').AgentSnapshot[]} snapshot
+ */
+function applyAgentSnapshot(state, renderer, snapshot) {
+  for (const agent of snapshot) {
+    const worker = buildWorkerFromAgent(state, renderer, agent.agentId, {
+      agentName: agent.agentName || undefined,
+      status: agent.status || undefined,
+      task: agent.task || undefined,
+      progress: agent.progress ?? undefined,
+      tokensUsed: agent.tokensUsed ?? undefined,
+      regionId: agent.regionId || undefined,
+      updatedAtMs: agent.updatedAtMs,
+    });
+    state.workers.set(worker.id, worker);
+  }
+  state.tickStats();
+  state.notify();
+}
+
+/**
+ * @param {import('./game-state.js').GameState} state
+ * @param {import('./renderer.js').Renderer} renderer
+ * @param {import('../src/agent-bridge.js').AgentEvent} event
+ */
+function applyAgentEvent(state, renderer, event) {
+  const timestamp = typeof event.timestampMs === 'number' ? event.timestampMs : Date.now();
+  const worker = buildWorkerFromAgent(state, renderer, event.agentId, {
+    agentName: event.agentName,
+    status: event.status,
+    task: event.task,
+    progress: event.progress,
+    tokensUsed: event.tokensUsed,
+    regionId: event.regionId,
+    updatedAtMs: timestamp,
+  });
+
+  if (event.type === 'TASK_COMPLETE') {
+    state.stats.completed += 1;
+  }
+  if (event.type === 'AGENT_ERROR') {
+    state.stats.failed += 1;
+  }
+
+  state.workers.set(worker.id, worker);
+  state.tickStats();
+
+  const details = event.details || buildAgentDetail(event, worker);
+  const eventType = mapAgentEventType(event.type);
+  state.pushEvent({
+    type: eventType,
+    timestamp,
+    workerId: worker.id,
+    details,
+  });
+
+  if (event.type === 'AGENT_TERMINATED') {
+    setTimeout(() => state.removeWorker(worker.id), 900);
+  }
+}
+
+/**
+ * @param {import('../src/agent-bridge.js').AgentEventType} type
+ * @returns {import('./game-state.js').EventType}
+ */
+function mapAgentEventType(type) {
+  switch (type) {
+    case 'AGENT_SPAWN':
+      return 'spawn';
+    case 'TASK_START':
+      return 'task_start';
+    case 'TASK_PROGRESS':
+      return 'status';
+    case 'TASK_COMPLETE':
+      return 'task_complete';
+    case 'AGENT_ERROR':
+      return 'error';
+    case 'AGENT_TERMINATED':
+      return 'terminate';
+    case 'AGENT_HEARTBEAT':
+      return 'status';
+    default:
+      return 'status';
+  }
+}
+
+/**
+ * @param {import('../src/agent-bridge.js').AgentEvent} event
+ * @param {import('./game-state.js').Worker} worker
+ * @returns {string}
+ */
+function buildAgentDetail(event, worker) {
+  switch (event.type) {
+    case 'AGENT_SPAWN':
+      return `${worker.name} connected.`;
+    case 'TASK_START':
+      return `${worker.name}: Started ${worker.currentTask || 'task'}.`;
+    case 'TASK_PROGRESS':
+      return `${worker.name}: Progress ${worker.progress}%`;
+    case 'TASK_COMPLETE':
+      return `${worker.name}: Completed ${worker.currentTask || 'task'}.`;
+    case 'AGENT_ERROR':
+      return `${worker.name}: ${worker.errorMessage || 'Agent error'}.`;
+    case 'AGENT_TERMINATED':
+      return `${worker.name} terminated.`;
+    case 'AGENT_HEARTBEAT':
+      return `${worker.name}: Heartbeat received.`;
+    default:
+      return `${worker.name}: Update received.`;
+  }
+}
+
+/**
+ * @param {import('./game-state.js').GameState} state
+ * @param {import('./renderer.js').Renderer} renderer
+ * @param {string} agentId
+ * @param {{agentName?: string, status?: string, task?: string, progress?: number, tokensUsed?: number, regionId?: string, updatedAtMs?: number}} payload
+ * @returns {import('./game-state.js').Worker}
+ */
+function buildWorkerFromAgent(state, renderer, agentId, payload) {
+  const existing = state.workers.get(agentId);
+  if (existing) {
+    const region = payload.regionId ? REGIONS.find((r) => r.id === payload.regionId) : null;
+    const errorMessage = payload.status === 'blocked'
+      ? existing.errorMessage || 'Blocked'
+      : payload.status ? null : existing.errorMessage;
+    return {
+      ...existing,
+      name: payload.agentName || existing.name,
+      status: payload.status || existing.status,
+      currentTask: payload.task ?? existing.currentTask,
+      progress: typeof payload.progress === 'number' ? payload.progress : existing.progress,
+      tokensUsed: typeof payload.tokensUsed === 'number' ? payload.tokensUsed : existing.tokensUsed,
+      targetRegion: region ? region.id : existing.targetRegion,
+      errorMessage,
+      updatedAt: payload.updatedAtMs || existing.updatedAt,
+    };
+  }
+
+  const region = payload.regionId
+    ? REGIONS.find((r) => r.id === payload.regionId)
+    : REGIONS.find((r) => r.id === 'townhall') || REGIONS[0];
+  const position = randomPointIn(region);
+
+  return {
+    id: agentId,
+    name: payload.agentName || `Agent-${agentId.slice(0, 6)}`,
+    status: payload.status || 'idle',
+    currentTask: payload.task || null,
+    targetRegion: region.id,
+    position,
+    spawnedAt: payload.updatedAtMs || Date.now(),
+    tokensUsed: typeof payload.tokensUsed === 'number' ? payload.tokensUsed : 0,
+    progress: typeof payload.progress === 'number' ? payload.progress : 0,
+    errorMessage: payload.status === 'blocked' ? 'Blocked' : null,
+    updatedAt: payload.updatedAtMs || Date.now(),
+  };
 }
 
 /**
@@ -69,19 +231,25 @@ function updateOpsFeed(event) {
 /**
  * Clear ops feed and show initial demo message.
  */
-function initOpsFeed() {
+function initOpsFeed(isDemo) {
   const feedEl = document.getElementById('opsFeed');
   if (!feedEl) return;
 
   feedEl.innerHTML = '';
   const line = document.createElement('div');
   line.className = 'wc3-ops-line';
-  line.textContent = 'Demo mode active. Monitoring BSI services.';
+  line.textContent = isDemo
+    ? 'Demo mode active. Monitoring BSI services.'
+    : 'Live ops feed connected. Monitoring BSI services.';
   feedEl.appendChild(line);
 }
 
 async function init() {
   const state = new GameState();
+  const params = new URLSearchParams(window.location.search);
+  const demoMode = params.get('demo') === 'true';
+  const opsDemoMode = params.get('opsDemo') === 'true';
+  const agentsDemoMode = params.get('agentsDemo') === 'true';
 
   const mapCanvas = /** @type {HTMLCanvasElement} */ (document.getElementById('mapCanvas'));
   const minimapCanvas = /** @type {HTMLCanvasElement} */ (document.getElementById('minimapCanvas'));
@@ -113,7 +281,7 @@ async function init() {
 
   // Initialize OpsBridge for BSI service monitoring
   const opsBridge = new OpsBridge({
-    demo: true,
+    demo: opsDemoMode,
     onEvent: (event) => {
       state.pushEvent(event);
       updateOpsFeed(event);
@@ -172,6 +340,26 @@ async function init() {
   });
   await opsBridge.connect();
 
+  const agentBridge = new AgentBridge({
+    demo: agentsDemoMode,
+    onEvent: (event) => {
+      applyAgentEvent(state, renderer, event);
+    },
+    onConnection: (connected) => {
+      if (connected) {
+        state.pushScoutLine('Agent bridge online. Live agents streaming.');
+      } else {
+        state.pushScoutLine('Agent bridge offline. Reconnecting...');
+      }
+    },
+  });
+  await agentBridge.connect();
+
+  const snapshot = await agentBridge.fetchSnapshot();
+  if (snapshot) {
+    applyAgentSnapshot(state, renderer, snapshot);
+  }
+
   // Initialize WC3 magical wisp particle system
   const wispSystem = initWispSystem();
   if (wispSystem) {
@@ -189,7 +377,7 @@ async function init() {
   alertSystem.info('BlazeCraft Initialized', 'Demo mode active. Monitoring BSI services in real-time.', { duration: 4000 });
 
   // Clear "Awaiting connection..." and show demo active message
-  initOpsFeed();
+  initOpsFeed(opsBridge.demo);
 
   // Add initial event to the Event Log so it's not empty on start
   state.pushEvent({
@@ -222,11 +410,14 @@ async function init() {
   });
 
   // controls: demo mode
-  let demoOn = true;
+  let demoOn = demoMode;
   const toggleDemo = document.getElementById('toggleDemo');
+  toggleDemo.classList.toggle('active', demoOn);
+  toggleDemo.setAttribute('aria-pressed', String(demoOn));
   toggleDemo.addEventListener('click', async () => {
     demoOn = !demoOn;
     toggleDemo.setAttribute('aria-pressed', String(demoOn));
+    toggleDemo.classList.toggle('active', demoOn);
     if (demoOn) {
       await bridge.connect();
       opsBridge.setDemoMode(true);
@@ -256,8 +447,10 @@ async function init() {
   modeRTS?.addEventListener('click', () => setMode('rts'));
   modeOps?.addEventListener('click', () => setMode('ops'));
 
-  // start demo
-  await bridge.connect();
+  // start demo (if enabled)
+  if (demoOn) {
+    await bridge.connect();
+  }
 
   // map interactions
   let isPanning = false;
